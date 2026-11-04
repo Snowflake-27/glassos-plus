@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fast_home_label">GlassOS Personal — Fast Home</string>
+    <string name="fast_home_description">Returns to GlassOS Personal when the stock Home screen opens. Does not read screen contents or intercept remote keys. Turn off Replace home in GlassOS settings to pause it.</string>
+</resources>

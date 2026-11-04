@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.Manifest
 import android.app.Activity
@@ -377,15 +377,15 @@ class SetupView(private val home: HomeScreen) : FrameLayout(home.ctx) {
 
     private fun appsStep() {
         title.text = "Your top row"
-        subtitle.text = "Choose up to ${HomeScreen.COLS} apps for the shelf. You can change them later."
+        subtitle.text = "Choose up to ${home.columns} apps for the shelf. You can change them later."
         val apps = allApps().filter { it.pkg !in hidden }
         if (picked.isEmpty()) picked.addAll(AppRepo.defaultDock(apps))
         picked.retainAll(apps.map { it.pkg }.toSet())
-        fun refreshCount() { subtitle.text = "Choose up to ${HomeScreen.COLS} apps for the shelf (${picked.size} chosen). You can change them later." }
+        fun refreshCount() { subtitle.text = "Choose up to ${home.columns} apps for the shelf (${picked.size} chosen). You can change them later." }
         refreshCount()
         val tiles = appGrid(apps, { it in picked }) { a, t ->
             if (a.pkg in picked) { picked.remove(a.pkg); t.chosen = false }
-            else if (picked.size >= HomeScreen.COLS) Toast.makeText(context, "The top row holds ${HomeScreen.COLS} apps. Remove one first.", Toast.LENGTH_SHORT).show()
+            else if (picked.size >= home.columns) Toast.makeText(context, "The top row holds ${home.columns} apps. Remove one first.", Toast.LENGTH_SHORT).show()
             else { picked.add(a.pkg); t.chosen = true }
             refreshCount()
         }
@@ -399,7 +399,7 @@ class SetupView(private val home: HomeScreen) : FrameLayout(home.ctx) {
         title.text = "Hidden apps"
         val apps = allApps()
         fun refreshCount() {
-            subtitle.text = if (hidden.isEmpty()) "Choose apps to hide from Home. They still open from the Top Shelf."
+            subtitle.text = if (hidden.isEmpty()) "OK hides or shows an app immediately. Apps stay installed."
                 else "${hidden.size} hidden. Choose an app again to show it on Home."
         }
         refreshCount()
@@ -411,6 +411,8 @@ class SetupView(private val home: HomeScreen) : FrameLayout(home.ctx) {
                 return@appGrid
             }
             if (!hidden.remove(a.pkg)) hidden.add(a.pkg)
+            prefs.hidden = hidden.toSet()
+            home.reloadDock()
             t.chosen = a.pkg in hidden
             refreshCount()
         }

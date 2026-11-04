@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.app.AlarmManager
 import android.app.NotificationManager

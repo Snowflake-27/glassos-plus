@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.content.Context
 import org.json.JSONObject
@@ -123,6 +123,17 @@ object Tmdb {
             out.add(Ref(type, x.optLong("id"), title, bd, null))
         }
         return out
+    }
+
+    /** Convert TMDB's exact id to IMDb on the worker thread, never by matching a name. */
+    fun titleLink(ctx: Context, slideKey: String, destination: String): String? {
+        val match = Regex("^t:tmdb_(movie|tv)_([0-9]+)$").matchEntire(slideKey) ?: return null
+        val key = Prefs(ctx).effectiveTmdbKey
+        if (key.isEmpty()) return null
+        val type = match.groupValues[1]
+        val id = match.groupValues[2]
+        val imdb = get(key, "/$type/$id/external_ids")?.optString("imdb_id") ?: return null
+        return TitleLinks.build(destination, if (type == "tv") "series" else "movie", imdb)
     }
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")

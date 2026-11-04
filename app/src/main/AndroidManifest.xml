@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -19,7 +20,7 @@
         android:allowBackup="false"
         android:banner="@drawable/banner"
         android:icon="@mipmap/ic_launcher"
-        android:label="GlassOS"
+        android:label="GlassOS Personal"
         android:largeHeap="false"
         android:theme="@style/GlassTheme">
 
@@ -45,6 +46,17 @@
         </activity>
 
         <service
+            android:name=".FastHomeService"
+            android:exported="true"
+            android:label="@string/fast_home_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/fast_home_service" />
+        </service>
+
+        <service
             android:name=".HomeWatcher"
             android:exported="false" />
 
@@ -66,7 +78,7 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
             <intent-filter>
-                <action android:name="io.github.abhishekkaisar.glassos.KICK" />
+                <action android:name="io.github.abhishekkaisar.glassos.personal.KICK" />
             </intent-filter>
         </receiver>
 
@@ -91,7 +103,7 @@
         <service
             android:name=".MediaListener"
             android:exported="true"
-            android:label="GlassOS"
+            android:label="GlassOS Personal"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />

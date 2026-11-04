@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.content.Context
 import android.graphics.Canvas
@@ -122,7 +122,8 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
         goTo(((curIdx + dir) % slides.size + slides.size) % slides.size)
     }
 
-    fun current(): Slide? = cur?.slide
+    /** During a crossfade, OK belongs to the title occupying most of the screen. */
+    fun current(): Slide? = (if (next != null && fade >= 0.5f) next else cur ?: next)?.slide
 
     /** Debug: fade to slide [i] now. */
     fun jumpTo(i: Int) { if (i in slides.indices) goTo(i) }
@@ -391,6 +392,12 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
 
     override fun onFocusChanged(gained: Boolean, direction: Int, previous: Rect?) {
         super.onFocusChanged(gained, direction, previous)
+        if (gained) {
+            // Lock the incoming title before showing the Open action. Automatic rotation
+            // must not change the destination while the owner is choosing it.
+            setRunning(false)
+            if (next != null) { finishFade(); updateBackdrop(); invalidate() }
+        }
         focus.set(gained)
     }
 
@@ -400,7 +407,7 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
             KeyEvent.KEYCODE_DPAD_RIGHT -> { step(1); return true }
             KeyEvent.KEYCODE_DPAD_DOWN -> { onFocusDown?.invoke(); return true }
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                if (event.repeatCount == 0) cur?.slide?.let { onOpen?.invoke(it) }
+                if (event.repeatCount == 0) current()?.let { onOpen?.invoke(it) }
                 return true
             }
         }

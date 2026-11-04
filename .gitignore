@@ -14,3 +14,18 @@ tmdb.properties
 *.apk
 *.aab
 handoff.md
+tests/classes/
+
+# Private TV sessions and credentials
+backup/
+shots/
+work/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+*.hprof
+*.zip

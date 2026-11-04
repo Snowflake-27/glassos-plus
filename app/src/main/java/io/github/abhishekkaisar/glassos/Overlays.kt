@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.graphics.Canvas
 import android.graphics.RectF
@@ -33,6 +33,13 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
     private val photoRow = RowView(context, "Profile photo")
     private val countryRow = RowView(context, "Country")
     private val shelfRow = RowView(context, "Top Shelf")
+    private val contentRow = RowView(context, "Background titles")
+    private val refreshRow = RowView(context, "Shuffle background selection")
+    private val columnsRow = RowView(context, "Apps per row")
+    private val insetRow = RowView(context, "Screen edge margin")
+    private val gapRow = RowView(context, "App spacing")
+    private val sizeRow = RowView(context, "Icon size")
+    private val destinationRow = RowView(context, "Open movies in")
     private val keyRow = RowView(context, "TMDB API key")
     private val appsRow = RowView(context, "Top row apps")
     private val hiddenRow = RowView(context, "Hidden apps")
@@ -44,6 +51,9 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
     private val editRow = RowView(context, "Edit top row")
     private val bgRow = RowView(context, "Background").apply { isFocusable = false; isClickable = false }
     private val allRow = RowView(context, "Show all apps")
+    private val continueAutoRow = RowView(context, "Auto-scroll Continue Watching")
+    private val continueRow = RowView(context, "Continue Watching access")
+    private val fastHomeRow = RowView(context, "Fast Home return")
     private val replaceRow = RowView(context, "Replace ${Platform.name(context)} home")
     private val fireSettingsRow = RowView(context, "${Platform.name(context)} settings")
     private val fireHomeRow = RowView(context, "${Platform.name(context)} home")
@@ -95,8 +105,12 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
         list.addView(photoRow, rowLp())
         list.addView(countryRow, rowLp())
         list.addView(shelfRow, rowLp())
+        list.addView(contentRow, rowLp())
+        list.addView(refreshRow, rowLp())
+        for (row in listOf(columnsRow, insetRow, gapRow, sizeRow, destinationRow)) list.addView(row, rowLp())
         list.addView(keyRow, rowLp())
         list.addView(soundRow, rowLp())
+        list.addView(continueAutoRow, rowLp())
         list.addView(bgRow, rowLp())
         val bgLabel = TextView(context).apply {
             text = "When Top Shelf art is unavailable"
@@ -117,6 +131,8 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
         list.addView(hiddenRow, rowLp())
         list.addView(allRow, rowLp())
         list.addView(replaceRow, rowLp())
+        list.addView(fastHomeRow, rowLp())
+        list.addView(continueRow, rowLp())
         list.addView(permsRow, rowLp())
         if (!Platform.isFireTv(context)) list.addView(homeAppRow, rowLp())
         list.addView(fireSettingsRow, rowLp())
@@ -152,12 +168,50 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
             act.setTopShelf(ids[(ids.indexOf(act.prefs.topShelf) + 1) % ids.size])
             updateValues()
         }
+        contentRow.onClick = {
+            val options = listOf("mixed", "movie", "series")
+            act.prefs.catalogContent = options[(options.indexOf(act.prefs.catalogContent) + 1) % options.size]
+            act.refetchTopShelf(); updateValues()
+        }
+        refreshRow.onClick = {
+            act.refetchTopShelf()
+            android.widget.Toast.makeText(context, "Refreshing background selection…", android.widget.Toast.LENGTH_SHORT).show()
+        }
+        fun next(value: Int, options: List<Int>): Int = options[(options.indexOf(value) + 1) % options.size]
+        columnsRow.onClick = {
+            act.prefs.columns = next(act.prefs.columns, listOf(4, 5, 6))
+            act.refreshLayout(); updateValues()
+        }
+        insetRow.onClick = {
+            act.prefs.sideMargin = next(act.prefs.sideMargin, listOf(24, 48, 64, 80, 104, 128))
+            act.refreshLayout(); updateValues()
+        }
+        gapRow.onClick = {
+            act.prefs.tileGap = next(act.prefs.tileGap, listOf(24, 40, 52, 64))
+            act.refreshLayout(); updateValues()
+        }
+        sizeRow.onClick = {
+            act.prefs.tileSize = next(act.prefs.tileSize, listOf(80, 90, 100))
+            act.refreshLayout(); updateValues()
+        }
+        destinationRow.onClick = {
+            act.prefs.titleDestination = if (act.prefs.titleDestination == TitleLinks.NUVIO) TitleLinks.STREMIO else TitleLinks.NUVIO
+            updateValues()
+        }
+        continueAutoRow.onClick = {
+            act.setContinueAutoScroll(!act.prefs.continueAutoScroll)
+            updateValues()
+        }
         soundRow.onClick = {
             act.prefs.sound = !act.prefs.sound
             updateValues()
         }
         editRow.onClick = { close { act.enterEdit() } }
         allRow.onClick = { close { act.focusAllApps() } }
+        continueRow.onClick = { close { act.requestContinuePermission() } }
+        fastHomeRow.onClick = {
+            close { act.ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
         replaceRow.onClick = {
             act.setReplaceHome(!act.prefs.replaceHome)
             updateValues()
@@ -172,6 +226,16 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
     }
 
     private fun updateValues() {
+        continueAutoRow.valueView.text = if (act.prefs.continueAutoScroll) "On" else "Off"
+        continueRow.valueView.text = if (android.os.Build.VERSION.SDK_INT >= 26 && context.checkSelfPermission(ContinueWatchingRepository.PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED) "Allowed" else "Allow TV listings"
+        fastHomeRow.valueView.text = if (FastHomeService.connected) "Connected" else "Enable in Accessibility"
+        contentRow.valueView.text = when (act.prefs.catalogContent) { "movie" -> "Movies"; "series" -> "Series"; else -> "Movies & series" }
+        refreshRow.valueView.text = "›"
+        columnsRow.valueView.text = act.prefs.columns.toString()
+        insetRow.valueView.text = "${act.prefs.sideMargin}px / 1080p"
+        gapRow.valueView.text = "${act.prefs.tileGap}px / 1080p"
+        sizeRow.valueView.text = "${act.prefs.tileSize}%"
+        destinationRow.valueView.text = if (act.prefs.titleDestination == TitleLinks.STREMIO) "Stremio" else "Nuvio"
         soundRow.valueView.text = if (act.prefs.sound) "On" else "Off"
         val hiddenCount = act.prefs.hidden.count { p -> HomeShare.apps?.any { it.pkg == p } ?: true }
         hiddenRow.valueView.text = if (hiddenCount == 0) "None" else "$hiddenCount"

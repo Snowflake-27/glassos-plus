@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.Manifest
 import android.app.Activity
@@ -52,6 +52,9 @@ object HomeShare {
  */
 class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen? = null) {
     val prefs = Prefs(ctx)
+    val columns get() = prefs.columns
+    private var layoutKey = prefs.layoutKey
+    private var openingTitle = false
     lateinit var root: FrameLayout
         private set
     lateinit var hero: HeroView
@@ -60,6 +63,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     private lateinit var scrim: View
     private lateinit var header: FrameLayout
     private lateinit var content: FrameLayout
+    private lateinit var continueRow: ContinueWatchingRow
+    private lateinit var continueRepo: ContinueWatchingRepository
     private lateinit var shelf: GlassBox
     private lateinit var gear: UserPill
     private lateinit var chevron: View
@@ -85,7 +90,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     /** The OK press that dropped a move: its release must not reach the tile, or the app would open. */
     private var eatOkUp = false
     private val rows = ArrayList<ArrayList<TileView>>()
-    private var currentRow = 0
+    private var currentRow = -1
+    private var heroExpanded = false
     private var lastDockIndex = 0
     var editMode = false
         private set
@@ -95,7 +101,14 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     private var focusedOnce = false
     /** True while the window showing this home is in front (activity resumed, or the overlay shown). */
     var resumed = false
-        set(v) { field = v; updateHeroRunning() }
+        set(v) {
+            field = v; updateHeroRunning()
+            if (::continueRow.isInitialized) {
+                if (v) continueRow.setAutoScrollEnabled(prefs.continueAutoScroll)
+                continueRow.setActive(v)
+            }
+            if (::continueRepo.isInitialized) { if (v) continueRepo.start() else continueRepo.stop() }
+        }
     private var released = false
     private val refreshing = java.util.concurrent.atomic.AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
@@ -137,6 +150,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         Backdrop.removeListener(backdropListener)
         Backdrop.removeFrameListener(frameListener)
         hero.release()
+        if (::continueRepo.isInitialized) continueRepo.release()
+        if (::continueRow.isInitialized) continueRow.release()
         labelAnim?.cancel()
         main.removeCallbacksAndMessages(null)
         worker.shutdownNow()
@@ -151,20 +166,22 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     private val sh get() = Backdrop.screenH
     // tvOS 26 (measured from a real 1080p screenshot): shelf 12px from the sides and 25px above the bottom,
     // radius 48px, 38px side and 40px top/bottom padding, 5:3 tiles with 52px gaps.
-    private val shelfMargin get() = sw * 12 / 1920
+    private val shelfMargin get() = sw * prefs.sideMargin / 1920
     private val shelfPad get() = sw * 38 / 1920
     private val shelfPadV get() = sh * 40 / 1080
     private val margin get() = shelfMargin + shelfPad
-    private val gap get() = sw * 52 / 1920
-    private val tileW get() = (sw - 2 * margin - 5 * gap) / COLS
+    private val gap get() = sw * prefs.tileGap / 1920
+    private val tileW get() = LayoutMath.tileWidth(sw, columns, margin, gap, prefs.tileSize)
     private val tileH get() = tileW * 3 / 5
     private val labelH get() = ctx.dpi(28f)
     private val rowH get() = tileH + labelH + ctx.dpi(22f)
     /** About 30% of the first drawer row peeks in at the bottom edge, 22px below the shelf (labels hidden while peeking). */
     private val peek get() = tileH * 30 / 100
     private val peekGap get() = sh * 22 / 1080
-    private val row0Top get() = sh - peek - peekGap - shelfPadV - tileH
-    private fun rowTop(r: Int) = if (r == 0) row0Top else row0Top + tileH + shelfPadV + peekGap + (r - 1) * rowH
+    private val continueSpace get() = LayoutMath.continueHeight(sw, tileW)
+    private val continueTop get() = row0Top + tileH + shelfPadV + peekGap
+    private val row0Top get() = LayoutMath.dockTop(sh, tileH, shelfPadV, peek, peekGap)
+    private fun rowTop(r: Int) = if (r == 0) row0Top else row0Top + tileH + shelfPadV + peekGap + continueSpace + (r - 1) * rowH
 
     private fun buildUi() {
         // No background here: the hero paints the night colour itself only while it has no art, so the full-screen
@@ -174,10 +191,10 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         hero = HeroView(ctx) { s -> HeroRepo.load(ctx, s, sw, sh) }.apply {
             id = View.generateViewId()
             shelfTop = (row0Top - shelfPadV).toFloat()
-            leftX = sw * 60f / 1920f
+            leftX = margin.toFloat()
             topY = sh * 30f / 1080f
             onOpen = { openSlide(it) }
-            openLabel = { s -> s.pkg?.let { p -> HomeShare.apps?.firstOrNull { it.pkg == p }?.label }?.let { "Open in $it" } ?: "Not on your apps" }
+            openLabel = { "Open in " + if (prefs.titleDestination == TitleLinks.STREMIO) "Stremio" else "Nuvio" }
             onFocusDown = { focusDock() }
         }
         root.addView(hero, FrameLayout.LayoutParams(-1, -1))
@@ -199,7 +216,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             onLongPress = { openSettings() }
         }
         header.addView(gear, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
-            rightMargin = sw * 60 / 1920; topMargin = sh * 48 / 1080
+            rightMargin = margin; topMargin = sh * 48 / 1080
         })
         hero.nextFocusUpId = gear.id
         updateTime()
@@ -223,6 +240,18 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             leftMargin = shelfMargin
             topMargin = row0Top - shelfPadV
         })
+        continueRow = ContinueWatchingRow(ctx).apply {
+            onUp = { focusDock() }
+            onDown = { focusAllApps() }
+            onOpen = { openContinue(it) }
+            onEnableOrRetry = { requestContinuePermission() }
+            setAutoScrollEnabled(prefs.continueAutoScroll)
+            canAutoAdvance = { resumed && !released && currentRow == 0 && !heroExpanded &&
+                !settings.isOpen && !cc.isOpen && !setup.isOpen && !appMenu.isOpen && !editMode && movingPkg == null }
+        }
+        continueRepo = ContinueWatchingRepository(ctx) { state ->
+            if (!released) continueRow.setState(state)
+        }
         chevron = Chevron(ctx)
         home.addView(chevron, FrameLayout.LayoutParams(ctx.dpi(18f), ctx.dpi(9f), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
             topMargin = row0Top - shelfPadV - ctx.dpi(17f)
@@ -278,15 +307,34 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
                 val r = (new.tag as? Int) ?: 0
                 if (r == 0) lastDockIndex = dockTiles.indexOf(new).coerceAtLeast(0)
                 scrollToRow(r)
-            } else if (new === gear || new === hero) scrollToRow(0)
+            } else if (new === gear || new === hero || continueRow.hasFocus()) scrollToRow(0)
         }
         root.viewTreeObserver.addOnGlobalLayoutListener { invalidateDeep(root) }
+        root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) {
+                // Cached apps can focus before attachment, when global focus callbacks are not delivered.
+                // Reconcile once before drawing, without animating or changing the selected view.
+                val instant = FocusAnim.forceInstant
+                FocusAnim.forceInstant = true
+                try {
+                    currentRow = -1
+                    scrollToRow((focused() as? TileView)?.tag as? Int ?: 0)
+                } finally { FocusAnim.forceInstant = instant }
+            }
+            override fun onViewDetachedFromWindow(v: View) { }
+        })
     }
 
     private fun scrollToRow(r: Int) {
-        if (r == currentRow) return
+        val expanded = r == 0 && (focused() === hero || focused() === gear)
+        if (r == currentRow && expanded == heroExpanded) return
         currentRow = r
-        val target = if (r == 0) 0f else -(rowTop(r) - sh * 0.30f)
+        heroExpanded = expanded
+        // Hero uses the original dock position/transition. Extra rows never reduce its space.
+        continueRow.visibility = if (expanded) View.GONE else View.VISIBLE
+        continueRow.refreshAutoScroll()
+        content.clipBounds = if (expanded) android.graphics.Rect(0, 0, sw, row0Top + tileH + shelfPadV) else null
+        val target = if (r == 0) { if (expanded) 0f else -continueSpace.toFloat() } else -(rowTop(r) - sh * 0.30f)
         val instant = FocusAnim.forceInstant
         if (instant) {
             content.animate().cancel(); header.animate().cancel(); scrim.animate().cancel()
@@ -348,22 +396,32 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
      * opens the streaming service's app. TMDB gives no app-specific title ids, so TMDB titles open the app.
      */
     private fun openSlide(s: Slide) {
-        if (s.kind != Slide.TITLE) return
-        val pkg = s.pkg
-        if (pkg == null || HomeShare.apps?.any { it.pkg == pkg } == false) {
-            Toast.makeText(ctx, "None of your apps streams this title here", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val url = s.url
-        if (url != null) {
-            val i = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).setPackage(pkg)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (i.resolveActivity(ctx.packageManager) != null) {
-                host.startApp(i, pkg, null)
-                return
+        if (s.kind != Slide.TITLE || openingTitle) return
+        val destination = prefs.titleDestination
+        openingTitle = true
+        Toast.makeText(ctx, if (destination == TitleLinks.STREMIO) "Opening in Stremio…" else "Opening in Nuvio…", Toast.LENGTH_SHORT).show()
+        worker.execute {
+            val url = try { TitleLinks.fromKey(destination, s.key) ?: Tmdb.titleLink(ctx, s.key, destination) } catch (_: Exception) { null }
+            ui {
+                openingTitle = false
+                if (released) return@ui
+                if (url == null) {
+                    Toast.makeText(ctx, "No exact title link. Choose Movies & series (Cinemeta) in Top Shelf.", Toast.LENGTH_LONG).show()
+                    return@ui
+                }
+                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).setPackage(destination)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Nuvio 0.8.12-beta can keep its previous detail screen when the task is
+                // reused. Recreate only its navigation task, never app data or settings.
+                if (destination == TitleLinks.NUVIO) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                if (intent.resolveActivity(ctx.packageManager) == null) {
+                    Toast.makeText(ctx, "The selected app is unavailable or cannot open this title.", Toast.LENGTH_LONG).show()
+                    return@ui
+                }
+                try { host.startApp(intent, destination, null) }
+                catch (_: Exception) { Toast.makeText(ctx, "Could not open the title in the selected app.", Toast.LENGTH_LONG).show() }
             }
         }
-        launch(pkg, null)
     }
 
     /**
@@ -428,6 +486,28 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         }
     }
 
+    /** Rebuild only the geometry and tiles; keep Settings open and the app choices intact. */
+    fun refreshLayout() {
+        if (movingPkg != null) endMove()
+        if (editMode) exitEdit()
+        layoutKey = prefs.layoutKey
+        shelf.layoutParams = (shelf.layoutParams as FrameLayout.LayoutParams).apply {
+            width = sw - 2 * shelfMargin; height = tileH + 2 * shelfPadV
+            leftMargin = shelfMargin; topMargin = row0Top - shelfPadV
+        }
+        hero.shelfTop = (row0Top - shelfPadV).toFloat()
+        hero.leftX = margin.toFloat()
+        gear.layoutParams = (gear.layoutParams as FrameLayout.LayoutParams).apply { rightMargin = margin }
+        chevron.layoutParams = (chevron.layoutParams as FrameLayout.LayoutParams).apply { topMargin = row0Top - shelfPadV - ctx.dpi(17f) }
+        hint.layoutParams = (hint.layoutParams as FrameLayout.LayoutParams).apply { topMargin = row0Top - ctx.dpi(56f) }
+        val instant = FocusAnim.forceInstant
+        FocusAnim.forceInstant = true
+        try { currentRow = -1; scrollToRow(0); applyApps(apps) }
+        finally { FocusAnim.forceInstant = instant }
+        root.requestLayout()
+        invalidateDeep(root)
+    }
+
     /** Switches the Top Shelf source and reloads it (fetching at once when the cache is stale). */
     fun setTopShelf(src: String) {
         prefs.topShelf = src
@@ -472,7 +552,9 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     }
 
     fun onResumed() {
+        if (layoutKey != prefs.layoutKey) refreshLayout()
         resumed = true
+        continueRow.setAutoScrollEnabled(prefs.continueAutoScroll)
         if (::setup.isInitialized) setup.onReturned()
         updateTime()
         if (!worker.isShutdown) worker.execute { refreshTitles(prefs.scene, wallToken) }
@@ -556,10 +638,10 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         apps = list
         val visible = visibleApps()
         val shown = visible.map { it.pkg }.toSet()
-        val wanted = prefs.dock ?: AppRepo.defaultDock(visible)
+        val wanted = prefs.dock ?: AppRepo.defaultDock(visible, columns)
         dockPkgs.clear()
-        dockPkgs.addAll(wanted.filter { it in shown }.distinct().take(COLS))
-        if (dockPkgs.isEmpty()) dockPkgs.addAll(AppRepo.defaultDock(visible))
+        dockPkgs.addAll(wanted.filter { it in shown }.distinct().take(columns))
+        if (dockPkgs.isEmpty()) dockPkgs.addAll(AppRepo.defaultDock(visible, columns))
         drawerPkgs.clear()
         drawerPkgs.addAll(AppRepo.arrange(visible.filter { it.pkg !in dockPkgs }, prefs.order).map { it.pkg })
         rebuildGrid()
@@ -610,7 +692,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             orientation = LinearLayout.HORIZONTAL
             clipChildren = false
             clipToPadding = false
-            setPadding(margin, padTop, 0, 0)
+            setPadding(LayoutMath.rowInset(sw, tiles.size, tileW, gap, margin), padTop, 0, 0)
         }
         tiles.forEachIndexed { i, t -> row.addView(t, LinearLayout.LayoutParams(-2, -2).apply { if (i > 0) leftMargin = gap }) }
         content.addView(row, FrameLayout.LayoutParams(-1, padTop + tileH + ctx.dpi(60f)).apply { topMargin = rowTop(r) - padTop })
@@ -618,6 +700,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
 
     /** Rebuilds every row. Keeps focus on [focusPkg] (or on whatever was focused) when possible. */
     private fun rebuildGrid(focusPkg: String? = null) {
+        val keepContinue = continueRow.hasFocus()
         val keep = focusPkg ?: (focused() as? TileView)?.app?.pkg
         while (content.childCount > 1) content.removeViewAt(content.childCount - 1)
         dockTiles.clear()
@@ -628,8 +711,12 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         dockTiles.addAll(dockRow)
         rows.add(dockRow)
         addRow(dockRow, 0)
+        continueRow.configure(tileW, gap, margin - shelfMargin, ctx.dp(12.5f))
+        content.addView(continueRow, FrameLayout.LayoutParams(sw - 2 * shelfMargin, continueSpace).apply {
+            leftMargin = shelfMargin; topMargin = continueTop
+        })
         val rest = drawerPkgs.mapNotNull { byPkg[it] }
-        rest.chunked(COLS).forEachIndexed { i, chunk ->
+        rest.chunked(columns).forEachIndexed { i, chunk ->
             val r = i + 1
             val list = ArrayList(chunk.map { makeTile(it, r).apply { labelAlpha = if (labelsShown) 1f else 0f } })
             rows.add(list)
@@ -643,11 +730,53 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         val target = rows.flatten().firstOrNull { it.app?.pkg == keep }
         val cur = focused()
         when {
+            keepContinue -> continueRow.requestFocus()
             target != null -> target.requestFocus()
             !focusedOnce && dockTiles.isNotEmpty() -> dockTiles[0].requestFocus()
             cur == null || cur.parent == null -> focusDock()
         }
         if (dockTiles.isNotEmpty()) focusedOnce = true
+    }
+
+    fun setContinueAutoScroll(on: Boolean) {
+        prefs.continueAutoScroll = on
+        continueRow.setAutoScrollEnabled(on)
+    }
+
+    fun requestContinuePermission() {
+        if (continueRepo.permitted()) { continueRepo.start(); return }
+        val activity = ctx as? Activity
+        if (activity == null) {
+            ctx.startActivity(Intent(ctx, MainActivity::class.java).putExtra("continuePermission", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return
+        }
+        if (Build.VERSION.SDK_INT < 26) {
+            Toast.makeText(ctx, "Requires Android TV 8 or newer", Toast.LENGTH_LONG).show(); return
+        }
+        val choice = ctx.getSharedPreferences("continue-consent", Context.MODE_PRIVATE)
+        if (choice.getBoolean("requested", false) && !activity.shouldShowRequestPermissionRationale(ContinueWatchingRepository.PERMISSION)) {
+            ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:" + ctx.packageName)))
+            return
+        }
+        android.app.AlertDialog.Builder(activity).setTitle("Continue Watching")
+            .setMessage("Allow GlassOS Personal to read watch history that apps share with Android TV? Titles, artwork and playback progress are combined locally. No private app data is accessed.")
+            .setNegativeButton("Not now", null)
+            .setPositiveButton("Continue") { _, _ ->
+                choice.edit().putBoolean("requested", true).apply()
+                activity.requestPermissions(arrayOf(ContinueWatchingRepository.PERMISSION), 41)
+            }.show()
+    }
+    fun onContinuePermission() { if (resumed) continueRepo.start() }
+    private fun openContinue(item: ContinueItem) {
+        val intent = ContinueWatchingRepository.resumeIntent(ctx, item.pkg, item.link)
+        if (intent == null) {
+            Toast.makeText(ctx, "This app has not provided a valid resume link", Toast.LENGTH_LONG).show(); return
+        }
+        // Nuvio 0.8.12 retains the previous detail on task reuse; a fresh navigation reads the published extras.
+        // CLEAR_TASK resets its activity stack only, never app data or the account/session.
+        if (item.pkg == TitleLinks.NUVIO) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        // Preserve the published content/episode extras; never substitute a catalog title link.
+        host.startApp(intent, item.pkg, continueRow)
     }
 
     fun launch(pkg: String, from: View?) {
@@ -681,8 +810,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             returnToDrawer(pkg)
             Toast.makeText(ctx, "Removed from the top row", Toast.LENGTH_SHORT).show()
         } else {
-            if (dockPkgs.size >= COLS) {
-                Toast.makeText(ctx, "The top row holds $COLS apps. Remove one first.", Toast.LENGTH_SHORT).show()
+            if (dockPkgs.size >= columns) {
+                Toast.makeText(ctx, "The top row holds $columns apps. Remove one first.", Toast.LENGTH_SHORT).show()
                 return
             }
             dockPkgs.add(pkg)
@@ -773,7 +902,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
      * across them) the tiles stay and only their apps change: no views are made or removed.
      */
     private fun setLists(dock: List<String>, drawer: List<String>) {
-        val same = dock.size == dockPkgs.size && drawer.size == drawerPkgs.size && rows.size == 1 + (drawer.size + COLS - 1) / COLS
+        val same = dock.size == dockPkgs.size && drawer.size == drawerPkgs.size && rows.size == 1 + (drawer.size + columns - 1) / columns
         dockPkgs.clear(); dockPkgs.addAll(dock)
         drawerPkgs.clear(); drawerPkgs.addAll(drawer)
         if (!same) { rebuildGrid(movingPkg); return }
@@ -804,16 +933,16 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             KeyEvent.KEYCODE_DPAD_DOWN -> when {
                 inDock && d.size > 1 -> { d.removeAt(i); w.add(minOf(i, w.size), pkg); true }
                 inDock -> { Toast.makeText(ctx, "The top row needs at least one app", Toast.LENGTH_SHORT).show(); false }
-                i / COLS < (w.size - 1) / COLS -> shift(w, minOf(i + COLS, w.size - 1))
+                i / columns < (w.size - 1) / columns -> shift(w, minOf(i + columns, w.size - 1))
                 else -> false
             }
             KeyEvent.KEYCODE_DPAD_UP -> when {
                 inDock -> false
-                i >= COLS -> shift(w, i - COLS)
+                i >= columns -> shift(w, i - columns)
                 else -> {
                     w.removeAt(i)
                     d.add(minOf(i, d.size), pkg)
-                    if (d.size > COLS) w.add(0, d.removeAt(d.size - 1))
+                    if (d.size > columns) w.add(0, d.removeAt(d.size - 1))
                     true
                 }
             }
@@ -1103,12 +1232,13 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             when (code) {
                 KeyEvent.KEYCODE_DPAD_LEFT -> if (col == 0) { focusTile.nudge(-1, 0); return true }
                 KeyEvent.KEYCODE_DPAD_RIGHT -> if (row != null && col == row.size - 1) { focusTile.nudge(1, 0); return true }
-                KeyEvent.KEYCODE_DPAD_DOWN -> if (r >= rows.size - 1) { focusTile.nudge(0, 1); return true }
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (r == 0) { continueRow.requestFocus(); return true }
+                    else if (r >= rows.size - 1) { focusTile.nudge(0, 1); return true }
                     else {
                         val next = rows[r + 1]
                         if (next.isNotEmpty()) { next[col.coerceIn(0, next.size - 1)].requestFocus(View.FOCUS_DOWN); return true }
                     }
-                KeyEvent.KEYCODE_DPAD_UP -> if (r >= 1) {
+                KeyEvent.KEYCODE_DPAD_UP -> if (r == 1) { continueRow.requestFocus(); return true } else if (r >= 1) {
                     val prev = rows[r - 1]
                     if (prev.isNotEmpty()) { prev[col.coerceIn(0, prev.size - 1)].requestFocus(View.FOCUS_UP); return true }
                 }
@@ -1139,6 +1269,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             appMenu.isOpen -> appMenu.close()
             movingPkg != null -> cancelMove()
             editMode -> exitEdit()
+            continueRow.hasFocus() -> focusDock()
             currentRow > 0 -> focusDock()
             else -> { /* Home stays put. */ }
         }
@@ -1146,6 +1277,8 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
 
     /** Home pressed again while this home is shown: like tvOS, close what is open and keep focus. */
     fun onHomeAgain(fromWatcher: Boolean) {
+        continueRepo.refresh()
+        continueRow.noteInteraction()
         if (setup.isOpen) return
         if (fromWatcher && !settings.isOpen && !cc.isOpen && !editMode && movingPkg == null && !appMenu.isOpen) {
             if (focused() == null) focusDock()
@@ -1163,6 +1296,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     /** Root view: sends keys to the home screen first, and Back to [onBack]. */
     private inner class KeyRoot(c: Context) : FrameLayout(c) {
         override fun dispatchKeyEvent(e: KeyEvent): Boolean {
+            if (::continueRow.isInitialized && e.action == KeyEvent.ACTION_DOWN) continueRow.noteInteraction()
             if (onKey(e)) return true
             if (e.keyCode == KeyEvent.KEYCODE_BACK && ctx !is Activity) {
                 if (e.action == KeyEvent.ACTION_UP && !e.isCanceled) onBack()

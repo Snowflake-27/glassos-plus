@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.app.Activity
 import android.content.BroadcastReceiver
@@ -35,6 +35,7 @@ class MainActivity : Activity(), HomeHost {
         window.setBackgroundDrawable(null)
         HomeWatcher.sync(this)
         if (!home.prefs.setupDone) home.root.post { home.openSetup() }
+        if (intent?.getBooleanExtra("continuePermission", false) == true) home.root.post { home.requestContinuePermission() }
         registerReceiver(timeReceiver, IntentFilter().apply {
             addAction(Intent.ACTION_TIME_TICK)
             addAction(Intent.ACTION_TIME_CHANGED)
@@ -124,7 +125,9 @@ class MainActivity : Activity(), HomeHost {
     override fun startApp(i: Intent, pkg: String, from: View?) = home.startFrom(i, from)
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 7) home.onStoragePermission()
+        if (requestCode == 41) home.onContinuePermission()
     }
 
     @Deprecated("Deprecated in Java")
@@ -132,7 +135,8 @@ class MainActivity : Activity(), HomeHost {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        // Debug builds: `am start -n io.github.abhishekkaisar.glassos/.MainActivity --ei slide N` fades to slide N (for captures).
+        if (intent?.getBooleanExtra("continuePermission", false) == true) { home.requestContinuePermission(); return }
+        // Debug builds: `am start -n io.github.abhishekkaisar.glassos.personal/.MainActivity --ei slide N` fades to slide N (for captures).
         val debug = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (debug && intent?.hasExtra("slide") == true) {
             home.hero.jumpTo(intent.getIntExtra("slide", 0)); return

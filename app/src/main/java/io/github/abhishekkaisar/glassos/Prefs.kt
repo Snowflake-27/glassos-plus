@@ -1,9 +1,17 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.content.Context
 
 class Prefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("glass", Context.MODE_PRIVATE)
+
+    var continueAutoScroll: Boolean
+        get() = sp.getBoolean("continueAutoScroll", false)
+        set(v) { sp.edit().putBoolean("continueAutoScroll", v).apply() }
+
+    var catalogContent: String
+        get() = sp.getString("catalogContent", "mixed") ?: "mixed"
+        set(v) { sp.edit().putString("catalogContent", v).apply() }
 
     var sound: Boolean
         get() = sp.getBoolean("sound", true)
@@ -19,7 +27,7 @@ class Prefs(ctx: Context) {
 
     /** Top Shelf source: [HeroRepo.SRC_TMDB] (default), [HeroRepo.SRC_APPLE] or [HeroRepo.SRC_SCENES]. */
     var topShelf: String
-        get() = sp.getString("topShelf", HeroRepo.SRC_TMDB) ?: HeroRepo.SRC_TMDB
+        get() = sp.getString("topShelf", HeroRepo.SRC_CINEMETA) ?: HeroRepo.SRC_CINEMETA
         set(v) { sp.edit().putString("topShelf", v).apply() }
 
     /** TMDB key entered in Settings; the build's own key (BuildConfig.TMDB_API_KEY) is used when this is empty. */
@@ -35,7 +43,7 @@ class Prefs(ctx: Context) {
         set(v) { sp.edit().putString("country", v).apply() }
 
     var replaceHome: Boolean
-        get() = sp.getBoolean("replaceHome", true)
+        get() = sp.getBoolean("replaceHome", false)
         set(v) { sp.edit().putBoolean("replaceHome", v).apply() }
 
     var dock: List<String>?
@@ -63,6 +71,24 @@ class Prefs(ctx: Context) {
     var askedStorage: Boolean
         get() = sp.getBoolean("askedStorage", false)
         set(v) { sp.edit().putBoolean("askedStorage", v).apply() }
+
+    var columns: Int
+        get() = LayoutMath.columns(sp.getInt("columns", 4))
+        set(v) { sp.edit().putInt("columns", LayoutMath.columns(v)).apply() }
+    /** Pixels at 1920 wide; scale with the screen, independent of Android density. */
+    var sideMargin: Int
+        get() = LayoutMath.clamp(sp.getInt("sideMargin", 80), 24, 128)
+        set(v) { sp.edit().putInt("sideMargin", LayoutMath.clamp(v, 24, 128)).apply() }
+    var tileGap: Int
+        get() = LayoutMath.clamp(sp.getInt("tileGap", 40), 24, 64)
+        set(v) { sp.edit().putInt("tileGap", LayoutMath.clamp(v, 24, 64)).apply() }
+    var tileSize: Int
+        get() = LayoutMath.clamp(sp.getInt("tileSize", 100), 80, 100)
+        set(v) { sp.edit().putInt("tileSize", LayoutMath.clamp(v, 80, 100)).apply() }
+    val layoutKey: String get() = "$columns:$sideMargin:$tileGap:$tileSize"
+    var titleDestination: String
+        get() = sp.getString("titleDestination", TitleLinks.NUVIO) ?: TitleLinks.NUVIO
+        set(v) { sp.edit().putString("titleDestination", v).apply() }
 
     companion object {
         const val DEFAULT_SCENE = "scene:desert"

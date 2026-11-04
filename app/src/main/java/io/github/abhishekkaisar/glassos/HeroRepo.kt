@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -52,9 +52,10 @@ object HeroRepo {
     val APPLE_TV_PKGS = listOf("com.apple.atve.amazon.appletv", "com.apple.atve.androidtv.appletv")
 
     const val SRC_TMDB = "tmdb"
+    const val SRC_CINEMETA = "cinemeta"
     const val SRC_APPLE = "apple"
     const val SRC_SCENES = "scenes"
-    val SOURCES = listOf(SRC_TMDB to "TMDB", SRC_APPLE to "Apple TV (unofficial)", SRC_SCENES to "Built-in scenes")
+    val SOURCES = listOf(SRC_CINEMETA to "Movies & series (Cinemeta)", SRC_TMDB to "TMDB", SRC_APPLE to "Apple TV (unofficial)", SRC_SCENES to "Built-in scenes")
     fun sourceLabel(id: String) = SOURCES.firstOrNull { it.first == id }?.second ?: id
 
     private const val REFRESH_MS = 6 * 3600_000L
@@ -124,7 +125,8 @@ object HeroRepo {
         val f = File(d, "titles.json")
         val attempt = File(d, "attempt").lastModified()
         val now = System.currentTimeMillis()
-        if (f.exists() && now - f.lastModified() < REFRESH_MS) return false
+        val upgraded = src != SRC_CINEMETA || File(d, "hq-v2").exists()
+        if (upgraded && f.exists() && now - f.lastModified() < REFRESH_MS) return false
         return now - attempt >= RETRY_MS
     }
 
@@ -140,8 +142,14 @@ object HeroRepo {
         if (src == SRC_SCENES) return false
         val d = dir(ctx, src)
         try { File(d, "attempt").writeText(System.currentTimeMillis().toString()) } catch (e: Throwable) { }
-        val items = if (src == SRC_TMDB) Tmdb.fetch(ctx) else appleItems(d) ?: return false
-        return store(d, items, if (src == SRC_APPLE) "us" else Prefs(ctx).country)
+        val items = when (src) {
+            SRC_CINEMETA -> Cinemeta.fetch(Prefs(ctx).catalogContent)
+            SRC_TMDB -> Tmdb.fetch(ctx)
+            else -> appleItems(d) ?: return false
+        }
+        val changed = store(d, items, if (src == SRC_APPLE) "us" else Prefs(ctx).country)
+        if (changed && src == SRC_CINEMETA) File(d, "hq-v2").writeText("2")
+        return changed
     }
 
     private fun appleItems(d: File): List<Item>? {
@@ -172,7 +180,7 @@ object HeroRepo {
         val keep = HashSet<String>()
         for (it in items) {
             val base = it.id.replace(Regex("[^A-Za-z0-9.]"), "_")
-            val art = File(d, "$base.jpg")
+            val art = File(d, if (it.id.startsWith("cinemeta_")) "${base}_hq.jpg" else "$base.jpg")
             if (!art.exists() && !download(it.art, art)) continue
             keep.add(art.name)
             var logo: File? = null

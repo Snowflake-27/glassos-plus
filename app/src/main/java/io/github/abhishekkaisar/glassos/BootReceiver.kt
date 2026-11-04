@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -56,7 +56,7 @@ class BootReceiver : BroadcastReceiver() {
 
     companion object {
         const val QUICKBOOT = "android.intent.action.QUICKBOOT_POWERON"
-        const val KICK = "io.github.abhishekkaisar.glassos.KICK"
+        const val KICK = "io.github.abhishekkaisar.glassos.personal.KICK"
         /** Once per process: LOCKED_BOOT_COMPLETED and BOOT_COMPLETED both arrive after one boot. */
         @Volatile private var booted = false
         @Volatile private var started = false

@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.app.AppOpsManager
 import android.app.Notification
@@ -219,7 +219,7 @@ class HomeWatcher : Service() {
         } catch (e: Throwable) { false }
 
         /** On, allowed, and needed: not when GlassOS is the default home app. */
-        fun wanted(ctx: Context): Boolean = Prefs(ctx).replaceHome && hasAccess(ctx) && !Platform.isDefaultHome(ctx)
+        fun wanted(ctx: Context): Boolean = Prefs(ctx).replaceHome && !FastHomeService.connected && hasAccess(ctx) && !Platform.isDefaultHome(ctx)
 
         fun hasAccess(ctx: Context): Boolean = try {
             val ops = ctx.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager

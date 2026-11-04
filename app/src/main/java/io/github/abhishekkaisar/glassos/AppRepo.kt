@@ -1,4 +1,4 @@
-package io.github.abhishekkaisar.glassos
+package io.github.abhishekkaisar.glassos.personal
 
 import android.content.Context
 import android.content.Intent
@@ -80,7 +80,7 @@ object AppRepo {
             val res = pm.getResourcesForApplication(ai.applicationInfo)
             val bannerId = if (ai.banner != 0) ai.banner else ai.applicationInfo.banner
             if (bannerId != 0) {
-                d = try { res.getDrawableForDensity(bannerId, DisplayMetrics.DENSITY_XHIGH, null) } catch (e: Exception) { null }
+                d = try { res.getDrawableForDensity(bannerId, DisplayMetrics.DENSITY_XXXHIGH, null) } catch (e: Exception) { null }
                 banner = d != null
             }
             if (d == null) {
@@ -89,7 +89,7 @@ object AppRepo {
             }
         } catch (e: Exception) { }
         if (d == null) d = try { ri.loadIcon(pm) } catch (e: Exception) { null }
-        val art = d?.let { if (banner) render(it, 400, 225) else iconArt(it) }
+        val art = d?.let { if (banner) render(it, 800, 450) else iconArt(it) }
         val color = if (art != null && !banner) dominant(art) else 0xFF2A3350.toInt()
         return AppEntry(ai.packageName, label, art, banner, color)
     }
@@ -118,13 +118,14 @@ object AppRepo {
     }
 
     private fun iconArt(d: Drawable): Bitmap {
-        val s = 192
+        val s = 384
         if (d is BitmapDrawable && d.bitmap != null && d.bitmap.width == s && d.bitmap.height == s) return d.bitmap
         return render(d, s, s)
     }
 
     private fun render(d: Drawable, w: Int, h: Int): Bitmap {
         val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        if (d is BitmapDrawable) d.isFilterBitmap = true
         val c = Canvas(b)
         val iw = d.intrinsicWidth
         val ih = d.intrinsicHeight
