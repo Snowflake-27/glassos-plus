@@ -270,7 +270,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             onOpen = { openContinue(it) }
             onEnableOrRetry = { requestContinuePermission() }
             setAutoScrollEnabled(prefs.continueAutoScroll)
-            canAutoAdvance = { resumed && !released && currentRow == 0 && !heroExpanded &&
+            canAutoAdvance = { resumed && !released && currentRow in 0..1 && !heroExpanded &&
                 !settings.isOpen && !cc.isOpen && !setup.isOpen && !appMenu.isOpen && !editMode && movingPkg == null }
         }
         continueRepo = ContinueWatchingRepository(ctx) { state ->
@@ -352,15 +352,18 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     }
 
     private fun scrollToRow(r: Int) {
-        val expanded = r == 0 && (focused() === hero || focused() === gear || focused() === heroRefresh)
+        val titleFocused = focused() === hero || focused() === gear || focused() === heroRefresh
+        // Apps stay at the original bottom position. Down reveals Continue Watching;
+        // Up returns Apps to the same position without changing the selected app.
+        val expanded = r == 0 && !continueRow.hasFocus()
+        continueRow.visibility = if (titleFocused) View.GONE else View.VISIBLE
         if (r == currentRow && expanded == heroExpanded) return
         currentRow = r
         heroExpanded = expanded
         // Hero uses the original dock position/transition. Extra rows never reduce its space.
-        continueRow.visibility = if (expanded) View.GONE else View.VISIBLE
         continueRow.refreshAutoScroll()
         content.clipBounds = if (expanded) android.graphics.Rect(0, 0, sw, row0Top + tileH + shelfPadV) else null
-        val target = if (r == 0) { if (expanded) 0f else -continueSpace.toFloat() } else -(rowTop(r) - sh * 0.30f)
+        val target = if (r == 0) { LayoutMath.homeTranslation(continueRow.hasFocus(), continueSpace).toFloat() } else -(rowTop(r) - sh * 0.30f)
         val instant = FocusAnim.forceInstant
         if (instant) {
             content.animate().cancel(); header.animate().cancel(); scrim.animate().cancel()
@@ -424,9 +427,12 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     private fun openSlide(s: Slide) {
         if (s.kind != Slide.TITLE || openingTitle) return
         val destination = prefs.titleDestination
-        try { ctx.packageManager.getApplicationInfo(destination, 0) }
-        catch (_: PackageManager.NameNotFoundException) {
-            Toast.makeText(ctx, "${TitleLinks.label(destination)} is not installed. Choose a player in GlassOS+ Settings.", Toast.LENGTH_LONG).show()
+        val installed = TitleLinks.packages(destination).filter { pkg ->
+            try { ctx.packageManager.getApplicationInfo(pkg, 0).enabled }
+            catch (_: PackageManager.NameNotFoundException) { false }
+        }
+        if (installed.isEmpty()) {
+            Toast.makeText(ctx, "${TitleLinks.label(destination)} could not be found in this TV profile. Install or enable the app, then try again.", Toast.LENGTH_LONG).show()
             return
         }
         openingTitle = true
@@ -440,17 +446,28 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
                     Toast.makeText(ctx, "No exact title link. Choose Movies & series (Cinemeta) in Top Shelf.", Toast.LENGTH_LONG).show()
                     return@ui
                 }
-                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).setPackage(destination)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                // Nuvio 0.8.12-beta can keep its previous detail screen when the task is
-                // reused. Recreate only its navigation task, never app data or settings.
-                if (destination == TitleLinks.NUVIO) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                if (intent.resolveActivity(ctx.packageManager) == null) {
-                    Toast.makeText(ctx, "The selected app is unavailable or cannot open this title.", Toast.LENGTH_LONG).show()
+                // Scope the exact title URI to each known installed distribution. An installed
+                // app without a compatible handler is a different error from an absent app.
+                val intent = installed.asSequence().map { pkg ->
+                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).setPackage(pkg)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }.firstOrNull { it.resolveActivity(ctx.packageManager) != null }
+                if (intent == null) {
+                    Toast.makeText(ctx, "${TitleLinks.label(destination)} is installed, but this version cannot open this title link. Update the app and try again.", Toast.LENGTH_LONG).show()
                     return@ui
                 }
-                try { host.startApp(intent, destination, null) }
-                catch (_: Exception) { Toast.makeText(ctx, "Could not open the title in the selected app.", Toast.LENGTH_LONG).show() }
+                val actualPackage = intent.`package` ?: return@ui
+                // Recreate only navigation, preserving app data. Retain the behavior that
+                // already works on this TV rather than assuming onNewIntent updates every build.
+                if (TitleLinks.needsTaskReset(actualPackage)) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                try { host.startApp(intent, actualPackage, null) }
+                catch (_: android.content.ActivityNotFoundException) {
+                    Toast.makeText(ctx, "The app changed or became unavailable. Try again.", Toast.LENGTH_LONG).show()
+                } catch (_: SecurityException) {
+                    Toast.makeText(ctx, "This TV blocked the title link. Check that the app is enabled in this profile.", Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {
+                    Toast.makeText(ctx, "Could not open the selected title. Try updating the player.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

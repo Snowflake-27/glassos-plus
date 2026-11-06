@@ -10,7 +10,7 @@ This fork is maintained by [Snowflake-27](https://github.com/Snowflake-27). It i
 - Public Android TV **Watch Next** and **Preview Channels** combined locally, including compatible Nuvio channels. Duplicate titles are merged; episode metadata, app source and genuine playback progress are shown when supplied.
 - Original app resume links and episode/content extras are retained. An app must publish accessible entries; support is not guaranteed for every streaming service.
 - Persistent **Auto-scroll Continue Watching**, **Off by default**. Manual left/right always works. When enabled, the row advances every five seconds and pauses during focus/interaction, resuming after nine seconds of inactivity.
-- Original Hero presentation: Up from Apps expands the Hero area with only Apps visible; Down restores the compact rows and the previously focused app.
+- Bottom Apps dock: it stays at the bottom while selected. Down reveals Continue Watching; Up restores the same app at the bottom. Up from Apps focuses the original Hero presentation.
 - Four to six app columns, configurable margins, spacing and icon size; hide/reorder apps without disabling their packages.
 - Cinemeta movie/series backgrounds with up to 120 cached titles from Popular/Featured pages, larger artwork and selectable catalog content; optional TMDB using your own key.
 - Configurable movie destination: Nuvio, Stremio or WuPlay. Catalog links use IMDb identifiers; Continue Watching uses each publishing app's original link.

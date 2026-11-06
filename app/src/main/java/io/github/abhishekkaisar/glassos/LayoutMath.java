@@ -7,6 +7,10 @@ public final class LayoutMath {
     public static int dockTop(int height, int tileHeight, int verticalPadding, int peek, int peekGap) {
         return height - peek - peekGap - verticalPadding - tileHeight;
     }
+    /** Dock moves up only while the lower carousel is selected. */
+    public static int homeTranslation(boolean continueFocused, int continueSpace) {
+        return continueFocused ? -Math.max(0, continueSpace) : 0;
+    }
     public static int continueHeight(int width, int tileWidth) {
         return tileWidth * 9 / 16 + width * 100 / 1920;
     }

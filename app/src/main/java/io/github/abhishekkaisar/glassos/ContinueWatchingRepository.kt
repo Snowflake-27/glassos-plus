@@ -23,7 +23,7 @@ data class ContinueItem(
     val activity: Long, val weight: Long, val source: String
 ) {
     val identity get() = ContinueLogic.identity(title, season, episode, year)
-    val nuvio get() = pkg == "com.nuvio.app" || pkg == "com.nuvio.tv"
+    val nuvio get() = TitleLinks.isNuvio(pkg)
     val fraction get() = ContinueLogic.progress(position, duration)
     fun json() = JSONObject().apply {
         put("id", id); put("pkg", pkg); put("app", app); put("title", title)
@@ -164,7 +164,7 @@ class ContinueWatchingRepository(context: Context, private val deliver: (Continu
             put("at", System.currentTimeMillis()); put("permission", permitted())
             put("channels", channelRows); put("watchNextRows", watchRows); put("previewRows", previewRows)
             put("eligible", items.size); put("merged", sorted.size); put("packages", JSONObject(counts as Map<*, *>))
-            put("nuvioChannels", JSONArray(channels.filterValues { it.pkg == "com.nuvio.app" || it.pkg == "com.nuvio.tv" }.keys.toList()))
+            put("nuvioChannels", JSONArray(channels.filterValues { TitleLinks.isNuvio(it.pkg) }.keys.toList()))
             put("failures", JSONArray(failures))
         }
         // Counts only, no titles/deep links in diagnostic logs. Cache remains in private app storage.

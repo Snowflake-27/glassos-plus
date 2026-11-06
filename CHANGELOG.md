@@ -1,5 +1,12 @@
 # Changes from upstream v1.0.2-beta
 
+## 1.1.2
+
+- Recognize official Nuvio Full (`com.nuvio.tv`), Play Store/legacy (`com.nuvio.app`) and official debug package IDs; route exact titles to an installed compatible distribution.
+- Preserve the verified Nuvio navigation-task workaround across supported distributions, without clearing app data.
+- Distinguish a missing/disabled app from an installed app without a compatible title handler.
+- Keep the selected Apps dock at its original bottom position. Down reveals Continue Watching; Up restores the dock and selected app. Hero presentation and carousel auto-scroll controls remain available.
+
 ## 1.1.1
 
 - Expanded the Cinemeta Hero selection from 24 to up to 120 titles, using Popular and Featured pages and deduplicating exact identifiers.
