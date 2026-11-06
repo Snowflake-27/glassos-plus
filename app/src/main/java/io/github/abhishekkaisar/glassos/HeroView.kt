@@ -39,6 +39,13 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
     /** Off: a slow zoom redraws the whole screen every frame for 10 of every 10.2 s, which this GPU cannot afford. */
     var kenBurns = false
     var onOpen: ((Slide) -> Unit)? = null
+    var restoredKey = ""
+    var onSelected: ((String) -> Unit)? = null
+    var onFocusRefresh: (() -> Unit)? = null
+    var onActionBounds: ((Float, Float, Float, Float) -> Unit)? = null
+    var refreshSelected = false
+        set(v) { field = v; focus.set(v || isFocused); invalidate() }
+    private val shuffleBag = HeroShuffleBag()
     var onFocusDown: (() -> Unit)? = null
 
     private val cache = LinkedHashMap<String, Loaded>()
@@ -112,9 +119,16 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
             cur?.index = keep
             prefetch((keep + 1) % list.size)
         } else if (list.isNotEmpty()) {
-            goTo(0)
+            goTo(list.indexOfFirst { it.key == restoredKey }.coerceAtLeast(0))
         }
         invalidate()
+    }
+
+    /** No catalog fetch or view rebuild; retain the old image until the next has decoded. */
+    fun shuffle() {
+        if (next != null || pendingIdx >= 0) return
+        val key = shuffleBag.draw(slides.map { it.key }, current()?.key) ?: return
+        goTo(slides.indexOfFirst { it.key == key })
     }
 
     fun step(dir: Int) {
@@ -166,7 +180,12 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
             val l = loader(s)
             handler.post {
                 loading.remove(s.key)
-                if (l == null) return@post
+                if (released || g != gen) {
+                    if (l != null) drop(l)
+                    if (!released && pendingIdx >= 0) prefetch(pendingIdx)
+                    return@post
+                }
+                if (l == null) { if (slides.getOrNull(pendingIdx)?.key == s.key) pendingIdx = -1; return@post }
                 cache[s.key] = l
                 trim()
                 if (l === cache[slides.getOrNull((curIdx + 1) % slides.size.coerceAtLeast(1))?.key]) kick()
@@ -205,6 +224,8 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
         val n = next ?: return
         cur = n
         curIdx = n.index
+        restoredKey = n.slide.key
+        onSelected?.invoke(n.slide.key)
         next = null
         fade = 0f
         trim()
@@ -337,6 +358,16 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
         }
         if (a != null) drawTitle(c, a, 1f - f)
         if (b != null) drawTitle(c, b, f)
+        val selected = if (b != null && f >= .5f) b else a ?: b
+        if (selected != null && selected.slide.kind == Slide.TITLE) {
+            val lift = 1f + .05f * focus.amount
+            fun bottom(l: Loaded?) = topY + (l?.logo?.height?.toFloat() ?: (titlePaint.descent() - titlePaint.ascent())) * lift
+            val bottom = if (a != null && b != null) bottom(a) * (1f - f) + bottom(b) * f else bottom(selected)
+            val label = openLabel(selected.slide)
+            hintPaint.getTextBounds(label, 0, label.length, tmpRect)
+            val side = dp(26f)
+            onActionBounds?.invoke(leftX + tmpRect.width() + dp(36f), bottom + dp(1f), side, focus.amount)
+        } else onActionBounds?.invoke(0f, 0f, dp(26f), 0f)
     }
 
     private fun drawTitle(c: Canvas, l: Loaded, alpha: Float) {
@@ -368,9 +399,10 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
             val ph = dp(26f)
             val pw = tmpRect.width() + dp(28f)
             rect.set(leftX, subY - ph + dp(7f), leftX + pw, subY + dp(7f))
-            pillPaint.color = Color.WHITE
+            pillPaint.color = if (refreshSelected) 0xFF626773.toInt() else Color.WHITE
             pillPaint.alpha = (alpha * fa * 242).toInt()
             c.drawRoundRect(rect, ph / 2, ph / 2, pillPaint)
+            hintPaint.color = if (refreshSelected) Color.WHITE else 0xFF111318.toInt()
             hintPaint.alpha = (alpha * fa * 255).toInt()
             c.drawText(label, leftX + dp(14f), rect.centerY() - tmpRect.exactCenterY(), hintPaint)
         }
@@ -398,13 +430,13 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
             setRunning(false)
             if (next != null) { finishFade(); updateBackdrop(); invalidate() }
         }
-        focus.set(gained)
+        focus.set(gained || refreshSelected)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> { step(-1); return true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { step(1); return true }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> { if (onFocusRefresh != null) onFocusRefresh?.invoke() else step(1); return true }
             KeyEvent.KEYCODE_DPAD_DOWN -> { onFocusDown?.invoke(); return true }
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 if (event.repeatCount == 0) current()?.let { onOpen?.invoke(it) }

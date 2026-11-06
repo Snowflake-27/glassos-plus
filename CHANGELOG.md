@@ -1,5 +1,21 @@
 # Changes from upstream v1.0.2-beta
 
+## 1.1.1
+
+- Expanded the Cinemeta Hero selection from 24 to up to 120 titles, using Popular and Featured pages and deduplicating exact identifiers.
+- Prioritized titles absent from the preceding cached selection; kept offline artwork, high-quality backgrounds, original layout, timing and three-entry decoded cache.
+- Added catalog-selection JVM checks and a one-time cache-format marker so existing installations fetch the expanded selection.
+
+## 1.1.0
+
+- Added the native, D-pad-focusable Hero refresh icon beside Open. Cached titles shuffle without a consecutive repeat, using the existing loader/crossfade; last committed selection survives restart.
+- Kept the distinct Settings catalog-refresh action with a clearer name.
+- Added WuPlay IMDb movie/series links and a third preferred-player setting; missing apps/unsupported exact routes never fall back to a generic player home.
+- Preserved compact Continue Watching, original Hero expansion, app customization and the pending opt-in Direct Home key experiment. Physical HOME interception is firmware dependent and not certified.
+- Kept the application ID while branding the installed app GlassOS+. Added dedicated release signing, tag release automation, bundled license notices, stable download URL and recovery guidance.
+- Retained targetSdk 28/minSdk 22 for inherited device compatibility; direct APK distribution only. WuPlay positive-case device testing is pending an installed compatible build.
+
+
 ## GlassOS+ initial source publication — 2026-11-04
 
 - Separate Personal namespace/application ID, retaining coexistence with upstream GlassOS.

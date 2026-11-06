@@ -34,7 +34,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
     private val countryRow = RowView(context, "Country")
     private val shelfRow = RowView(context, "Top Shelf")
     private val contentRow = RowView(context, "Background titles")
-    private val refreshRow = RowView(context, "Shuffle background selection")
+    private val refreshRow = RowView(context, "Refresh hero catalog")
     private val columnsRow = RowView(context, "Apps per row")
     private val insetRow = RowView(context, "Screen edge margin")
     private val gapRow = RowView(context, "App spacing")
@@ -53,6 +53,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
     private val allRow = RowView(context, "Show all apps")
     private val continueAutoRow = RowView(context, "Auto-scroll Continue Watching")
     private val continueRow = RowView(context, "Continue Watching access")
+    private val directHomeRow = RowView(context, "Direct Home key (experimental)")
     private val fastHomeRow = RowView(context, "Fast Home return")
     private val replaceRow = RowView(context, "Replace ${Platform.name(context)} home")
     private val fireSettingsRow = RowView(context, "${Platform.name(context)} settings")
@@ -132,6 +133,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
         list.addView(allRow, rowLp())
         list.addView(replaceRow, rowLp())
         list.addView(fastHomeRow, rowLp())
+        list.addView(directHomeRow, rowLp())
         list.addView(continueRow, rowLp())
         list.addView(permsRow, rowLp())
         if (!Platform.isFireTv(context)) list.addView(homeAppRow, rowLp())
@@ -175,7 +177,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
         }
         refreshRow.onClick = {
             act.refetchTopShelf()
-            android.widget.Toast.makeText(context, "Refreshing background selection…", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(context, "Refreshing hero catalog…", android.widget.Toast.LENGTH_SHORT).show()
         }
         fun next(value: Int, options: List<Int>): Int = options[(options.indexOf(value) + 1) % options.size]
         columnsRow.onClick = {
@@ -195,7 +197,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
             act.refreshLayout(); updateValues()
         }
         destinationRow.onClick = {
-            act.prefs.titleDestination = if (act.prefs.titleDestination == TitleLinks.NUVIO) TitleLinks.STREMIO else TitleLinks.NUVIO
+            act.prefs.titleDestination = TitleLinks.next(act.prefs.titleDestination)
             updateValues()
         }
         continueAutoRow.onClick = {
@@ -209,6 +211,18 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
         editRow.onClick = { close { act.enterEdit() } }
         allRow.onClick = { close { act.focusAllApps() } }
         continueRow.onClick = { close { act.requestContinuePermission() } }
+        directHomeRow.onClick = {
+            if (act.prefs.directHomeKey) { act.setDirectHomeKey(false); updateValues() }
+            else if (context !is android.app.Activity) {
+                close { context.startActivity(android.content.Intent(context, MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                android.widget.Toast.makeText(context, "Open Settings in GlassOS+ to enable Direct Home", android.widget.Toast.LENGTH_LONG).show()
+            }
+            else android.app.AlertDialog.Builder(context)
+                .setTitle("Direct Home key")
+                .setMessage("Try handling Home before the stock launcher opens. This also replaces long-press Home actions. Other keys pass through, but test held volume buttons on your remote. Turn this off if Home or volume behaves incorrectly.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Enable") { _, _ -> act.setDirectHomeKey(true); updateValues() }.show()
+        }
         fastHomeRow.onClick = {
             close { act.ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }
@@ -226,6 +240,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
     }
 
     private fun updateValues() {
+        directHomeRow.valueView.text = if (act.prefs.directHomeKey) "On" else "Off"
         continueAutoRow.valueView.text = if (act.prefs.continueAutoScroll) "On" else "Off"
         continueRow.valueView.text = if (android.os.Build.VERSION.SDK_INT >= 26 && context.checkSelfPermission(ContinueWatchingRepository.PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED) "Allowed" else "Allow TV listings"
         fastHomeRow.valueView.text = if (FastHomeService.connected) "Connected" else "Enable in Accessibility"
@@ -235,7 +250,7 @@ class SettingsView(private val act: HomeScreen) : FrameLayout(act.ctx) {
         insetRow.valueView.text = "${act.prefs.sideMargin}px / 1080p"
         gapRow.valueView.text = "${act.prefs.tileGap}px / 1080p"
         sizeRow.valueView.text = "${act.prefs.tileSize}%"
-        destinationRow.valueView.text = if (act.prefs.titleDestination == TitleLinks.STREMIO) "Stremio" else "Nuvio"
+        destinationRow.valueView.text = TitleLinks.label(act.prefs.titleDestination)
         soundRow.valueView.text = if (act.prefs.sound) "On" else "Off"
         val hiddenCount = act.prefs.hidden.count { p -> HomeShare.apps?.any { it.pkg == p } ?: true }
         hiddenRow.valueView.text = if (hiddenCount == 0) "None" else "$hiddenCount"

@@ -29,3 +29,6 @@ work/
 *.log
 *.hprof
 *.zip
+
+dist/
+*.lineage

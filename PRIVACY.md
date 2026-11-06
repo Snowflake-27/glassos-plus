@@ -6,6 +6,6 @@ Published titles, artwork links, original resume intents and progress are cached
 
 Catalog and artwork requests contact their providers. No new telemetry or watch-history upload was added by this fork. Optional upstream network sources remain subject to their own behavior and provider policies.
 
-Fast Home matches stock launcher window package/class events. It cannot read window contents, filter remote keys or perform gestures. The fallback watcher uses Android usage access and overlay permission.
+Fast Home matches stock launcher window package/class events. It cannot read window contents or perform gestures. Optional Direct Home key filtering is a separate opt-in setting: it requests key events and consumes only HOME, not volume, D-pad or other keys. Firmware determines whether physical HOME is delivered. The fallback watcher uses Android usage access and overlay permission.
 
 Keep local configuration, credentials, build/signing keys, device identifiers, screenshots with personal information and TV diagnostic files outside Git. The repository ignores common local/private paths; review every staged file before publishing.

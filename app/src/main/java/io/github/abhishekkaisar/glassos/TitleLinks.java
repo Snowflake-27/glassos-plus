@@ -5,11 +5,19 @@ public final class TitleLinks {
     private TitleLinks() {}
     public static final String NUVIO = "com.nuvio.app";
     public static final String STREMIO = "com.stremio.one";
+    public static final String WUPLAY = "app.wuplay.androidtv";
+    public static String label(String destination) {
+        return STREMIO.equals(destination) ? "Stremio" : WUPLAY.equals(destination) ? "WuPlay" : "Nuvio";
+    }
+    public static String next(String destination) {
+        return NUVIO.equals(destination) ? STREMIO : STREMIO.equals(destination) ? WUPLAY : NUVIO;
+    }
     public static String build(String destination, String type, String imdb) {
         if (imdb == null || !imdb.matches("tt[0-9]{7,12}")) return null;
         if (!"movie".equals(type) && !"series".equals(type)) return null;
         if (NUVIO.equals(destination)) return "nuvio://" + type + "/" + imdb;
         if (STREMIO.equals(destination)) return "stremio:///detail/" + type + "/" + imdb + "/" + imdb;
+        if (WUPLAY.equals(destination)) return "wuplay://" + type + "/" + imdb;
         return null;
     }
     public static String fromKey(String destination, String key) {

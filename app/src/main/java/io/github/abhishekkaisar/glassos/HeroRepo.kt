@@ -42,7 +42,7 @@ class Loaded(val slide: Slide, val sharp: Bitmap, val blurred: Bitmap, val logo:
 }
 
 /**
- * Sources for the rotating Top Shelf: trending titles from TMDB (default), the Apple TV app's featured titles
+ * Sources for the rotating Top Shelf: Cinemeta titles (default), optional TMDB or the Apple TV app's featured titles
  * (unofficial, off by default) or the built-in scenes. Titles are cached on disk and refreshed at most every
  * 6 hours. The user's own photos (copied to private storage) are one of the fallback choices.
  */
@@ -125,7 +125,7 @@ object HeroRepo {
         val f = File(d, "titles.json")
         val attempt = File(d, "attempt").lastModified()
         val now = System.currentTimeMillis()
-        val upgraded = src != SRC_CINEMETA || File(d, "hq-v2").exists()
+        val upgraded = src != SRC_CINEMETA || File(d, "catalog-v3").exists()
         if (upgraded && f.exists() && now - f.lastModified() < REFRESH_MS) return false
         return now - attempt >= RETRY_MS
     }
@@ -143,12 +143,15 @@ object HeroRepo {
         val d = dir(ctx, src)
         try { File(d, "attempt").writeText(System.currentTimeMillis().toString()) } catch (e: Throwable) { }
         val items = when (src) {
-            SRC_CINEMETA -> Cinemeta.fetch(Prefs(ctx).catalogContent)
+            SRC_CINEMETA -> Cinemeta.fetch(Prefs(ctx).catalogContent, cachedTitles(ctx, src).map { it.key.removePrefix("t:") }.toSet())
             SRC_TMDB -> Tmdb.fetch(ctx)
             else -> appleItems(d) ?: return false
         }
         val changed = store(d, items, if (src == SRC_APPLE) "us" else Prefs(ctx).country)
-        if (changed && src == SRC_CINEMETA) File(d, "hq-v2").writeText("2")
+        if (changed && src == SRC_CINEMETA) {
+            File(d, "catalog-v3").writeText("3")
+            android.util.Log.i("GlassCatalog", "Cinemeta cached titles: ${cachedTitles(ctx, src).size}")
+        }
         return changed
     }
 
