@@ -18,7 +18,9 @@ Enable installation permission for Downloader/file manager if Android asks, inst
 
 ## Downloader
 
-At [AFTVnews URL Shortener](https://go.aftvnews.com/), submit the permanent latest-download URL above, complete the CAPTCHA and save the numeric code returned. A code is not assigned in advance. Reuse the same URL and asset filename for future releases so the code follows the latest APK. Never substitute another project's code.
+Enter **6385360** in Downloader, or open [the verified code link](https://go.aftvnews.com/6385360). Its destination is the permanent latest-download URL above. Reuse the same URL and APK asset filename for future releases so this code follows the latest version; no new code is needed for each release. The short alias supplied by AFTVnews is `http://aftv.news/6385360`; the main-domain link above was independently checked against its destination.
+
+If Android asks, allow installation from Downloader, install the APK, and choose GlassOS+ through the normal Home/default-app setting. Do not uninstall or clear app data when an update reports an incompatible signature; see the debug-installation section below.
 
 ## Existing debug installations
 
