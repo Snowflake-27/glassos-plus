@@ -159,6 +159,7 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
         fade = o.fade
         fadeStart = o.fadeStart
         curShownClock = o.curShownClock
+        contentDescription = o.contentDescription
         clockBase = o.clock()
         resumedAt = SystemClock.uptimeMillis()
         updateBackdrop()
@@ -225,6 +226,7 @@ class HeroView(ctx: Context, private val loader: (Slide) -> Loaded?) : View(ctx)
         cur = n
         curIdx = n.index
         restoredKey = n.slide.key
+        contentDescription = if (n.slide.kind == Slide.TITLE) "Featured: ${n.slide.title}" else "Featured background"
         onSelected?.invoke(n.slide.key)
         next = null
         fade = 0f

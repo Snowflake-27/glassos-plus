@@ -457,9 +457,9 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
                     return@ui
                 }
                 val actualPackage = intent.`package` ?: return@ui
-                val version = try { ctx.packageManager.getPackageInfo(actualPackage, 0).versionName }
-                    catch (_: PackageManager.NameNotFoundException) { null }
-                if (TitleLinks.needsTaskReset(actualPackage, version)) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                // Recreate only navigation, preserving app data. Retain the behavior that
+                // already works on this TV rather than assuming onNewIntent updates every build.
+                if (TitleLinks.needsTaskReset(actualPackage)) intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
                 try { host.startApp(intent, actualPackage, null) }
                 catch (_: android.content.ActivityNotFoundException) {
                     Toast.makeText(ctx, "The app changed or became unavailable. Try again.", Toast.LENGTH_LONG).show()

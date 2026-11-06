@@ -39,8 +39,8 @@ public final class PersonalizationCheck {
         require(!TitleLinks.isNuvio("com.nuvio.fake"), "Untrusted package classified as Nuvio");
         require("nuvio://movie/tt0371746".equals(TitleLinks.build(TitleLinks.NUVIO_TV, "movie", "tt0371746")), "Native Nuvio route changed");
         require(java.util.Arrays.asList(TitleLinks.packages(TitleLinks.NUVIO)).contains(TitleLinks.NUVIO_TV), "Package fallback missing");
-        require(TitleLinks.needsTaskReset(TitleLinks.NUVIO, "0.8.12-beta"), "Working legacy navigation lost");
-        require(!TitleLinks.needsTaskReset(TitleLinks.NUVIO, "1.0.0") && !TitleLinks.needsTaskReset(TitleLinks.NUVIO_TV, "1.0.0"), "Native app task reset");
+        require(TitleLinks.needsTaskReset(TitleLinks.NUVIO), "Working legacy navigation lost");
+        require(TitleLinks.needsTaskReset(TitleLinks.NUVIO_TV) && !TitleLinks.needsTaskReset(TitleLinks.STREMIO), "Nuvio task workaround scope incorrect");
         require(LayoutMath.homeTranslation(false, 260) == 0, "Selected dock moved from bottom");
         require(LayoutMath.homeTranslation(true, 260) == -260, "Continue Watching not revealed");
         Set<String> homes = Collections.singleton("stock/stock.HomeActivity");

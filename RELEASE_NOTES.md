@@ -1,4 +1,4 @@
-GlassOS+ 1.1.2 fixes Nuvio distribution detection: official Full, Play Store/legacy and debug package IDs are now recognized. Exact movie/series links resolve against an installed compatible distribution. The Nuvio 0.8.x task workaround remains scoped to that legacy version; native Nuvio handles incoming links without a task reset.
+GlassOS+ 1.1.2 fixes Nuvio distribution detection: official Full, Play Store/legacy and debug package IDs are now recognized. Exact movie/series links resolve against an installed compatible distribution. The existing Nuvio navigation-task workaround is preserved across supported distributions without clearing app data.
 
 The selected Apps dock now stays at the bottom. Down reveals Continue Watching; Up returns to the same app. Hero, shuffle, the 120-title catalog and existing customizations remain available.
 

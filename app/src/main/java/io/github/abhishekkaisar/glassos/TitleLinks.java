@@ -11,10 +11,8 @@ public final class TitleLinks {
     public static String[] packages(String destination) {
         return isNuvio(destination) ? new String[]{NUVIO, NUVIO_TV, "com.nuvio.appdebug", "com.nuviodebug.com"} : new String[]{destination};
     }
-    /** Only the verified legacy React Native series needs its navigation task recreated. */
-    public static boolean needsTaskReset(String pkg, String version) {
-        return NUVIO.equals(pkg) && version != null && version.startsWith("0.8.");
-    }
+    /** Preserve the proven title-navigation workaround across official Nuvio distributions. */
+    public static boolean needsTaskReset(String pkg) { return isNuvio(pkg); }
     public static final String STREMIO = "com.stremio.one";
     public static final String WUPLAY = "app.wuplay.androidtv";
     public static String label(String destination) {
