@@ -20,3 +20,9 @@ Private recovery APK, signing backup, before/after package lists, screenshots an
 ## Catalog expansion 1.1.1
 
 Public endpoint probes returned 211 unique movie and 203 unique series candidates across Popular and Featured pages on the test date (counts vary over time). JVM checks verified fresh-title priority, deduplication, sparse fallback and empty input. The optimized release and release lint passed with the same inherited target-SDK issue and no new errors. VersionCode 11 was signed with the existing dedicated release key and installed as an update without clearing data. The TV logged 120 successfully cached Cinemeta titles.
+
+## Nuvio compatibility and bottom dock 1.1.2
+
+Debug and optimized release builds passed with zero new lint errors. JVM checks cover the official stable/debug package identifiers, exact native Nuvio URI construction, the legacy-only task-reset rule and dock positioning, alongside the existing 864 layout combinations. Official Nuvio source confirms its Full/Play Store package IDs and incoming movie/series parser.
+
+On the Xiaomi test TV, the release update preserved data and disabled-package state. Focused dock top stayed at y=779 in the 1080p UI through Left/Right, Hero return and Continue Watching Down/Up; focus returned to the same app. Private screenshots verified the selected Hero title opening in the existing legacy Nuvio installation. A same-key previous-source recovery build with versionCode 12 was prepared. TCL and NVIDIA Shield hardware were not available, so results on those devices remain unverified.

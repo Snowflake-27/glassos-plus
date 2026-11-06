@@ -4,18 +4,29 @@ package io.github.abhishekkaisar.glassos.personal;
 public final class TitleLinks {
     private TitleLinks() {}
     public static final String NUVIO = "com.nuvio.app";
+    public static final String NUVIO_TV = "com.nuvio.tv";
+    public static boolean isNuvio(String pkg) {
+        return NUVIO.equals(pkg) || NUVIO_TV.equals(pkg) || "com.nuvio.appdebug".equals(pkg) || "com.nuviodebug.com".equals(pkg);
+    }
+    public static String[] packages(String destination) {
+        return isNuvio(destination) ? new String[]{NUVIO, NUVIO_TV, "com.nuvio.appdebug", "com.nuviodebug.com"} : new String[]{destination};
+    }
+    /** Only the verified legacy React Native series needs its navigation task recreated. */
+    public static boolean needsTaskReset(String pkg, String version) {
+        return NUVIO.equals(pkg) && version != null && version.startsWith("0.8.");
+    }
     public static final String STREMIO = "com.stremio.one";
     public static final String WUPLAY = "app.wuplay.androidtv";
     public static String label(String destination) {
         return STREMIO.equals(destination) ? "Stremio" : WUPLAY.equals(destination) ? "WuPlay" : "Nuvio";
     }
     public static String next(String destination) {
-        return NUVIO.equals(destination) ? STREMIO : STREMIO.equals(destination) ? WUPLAY : NUVIO;
+        return isNuvio(destination) ? STREMIO : STREMIO.equals(destination) ? WUPLAY : NUVIO;
     }
     public static String build(String destination, String type, String imdb) {
         if (imdb == null || !imdb.matches("tt[0-9]{7,12}")) return null;
         if (!"movie".equals(type) && !"series".equals(type)) return null;
-        if (NUVIO.equals(destination)) return "nuvio://" + type + "/" + imdb;
+        if (isNuvio(destination)) return "nuvio://" + type + "/" + imdb;
         if (STREMIO.equals(destination)) return "stremio:///detail/" + type + "/" + imdb + "/" + imdb;
         if (WUPLAY.equals(destination)) return "wuplay://" + type + "/" + imdb;
         return null;

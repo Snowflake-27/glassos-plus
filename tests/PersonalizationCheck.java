@@ -34,6 +34,15 @@ public final class PersonalizationCheck {
             java.util.Arrays.asList("old", "fresh", "fresh"), Collections.singleton("old"), 120, new java.util.Random(3));
         require(catalog.size() == 2 && catalog.get(0).equals("fresh"), "Sparse catalog loses fallback or duplicates titles");
         require(io.github.abhishekkaisar.glassos.personal.HeroCatalogSelection.choose(Collections.emptyList(), Collections.emptySet(), 120, new java.util.Random(3)).isEmpty(), "Empty catalog fabricated entries");
+        require(TitleLinks.isNuvio("com.nuvio.tv") && TitleLinks.isNuvio("com.nuvio.app"), "Nuvio distribution missing");
+        require(TitleLinks.isNuvio("com.nuviodebug.com") && TitleLinks.isNuvio("com.nuvio.appdebug"), "Official debug distribution missing");
+        require(!TitleLinks.isNuvio("com.nuvio.fake"), "Untrusted package classified as Nuvio");
+        require("nuvio://movie/tt0371746".equals(TitleLinks.build(TitleLinks.NUVIO_TV, "movie", "tt0371746")), "Native Nuvio route changed");
+        require(java.util.Arrays.asList(TitleLinks.packages(TitleLinks.NUVIO)).contains(TitleLinks.NUVIO_TV), "Package fallback missing");
+        require(TitleLinks.needsTaskReset(TitleLinks.NUVIO, "0.8.12-beta"), "Working legacy navigation lost");
+        require(!TitleLinks.needsTaskReset(TitleLinks.NUVIO, "1.0.0") && !TitleLinks.needsTaskReset(TitleLinks.NUVIO_TV, "1.0.0"), "Native app task reset");
+        require(LayoutMath.homeTranslation(false, 260) == 0, "Selected dock moved from bottom");
+        require(LayoutMath.homeTranslation(true, 260) == -260, "Continue Watching not revealed");
         Set<String> homes = Collections.singleton("stock/stock.HomeActivity");
         require(HomeRedirectPolicy.accepts(true, true, "stock", "stock.HomeActivity", homes), "Home ignored");
         require(!HomeRedirectPolicy.accepts(true, true, "stock", "stock.SettingsActivity", homes), "Settings hijacked");
