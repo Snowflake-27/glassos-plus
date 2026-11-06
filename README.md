@@ -26,6 +26,12 @@ Watch Next/Preview channels require Android 8 or newer and normal `READ_TV_LISTI
 
 The installed application is labeled **GlassOS+**, with application ID `io.github.abhishekkaisar.glassos.personal`. This preserves compatibility with existing Personal installations. It coexists with the official GlassOS application.
 
+## Install with Downloader
+
+Enter **6385360** in the Downloader app on your Android TV / Google TV. The [Downloader link](https://go.aftvnews.com/6385360) points to the latest signed GlassOS+ APK, so the same code can be used for future releases. Allow installation from Downloader if Android asks, then select GlassOS+ as your Home app through normal Android settings.
+
+The [direct APK download](https://github.com/Snowflake-27/glassos-plus/releases/latest/download/GlassOS-Plus.apk) is available too. See [installation and recovery](docs/RELEASES.md) before updating an independently debug-signed build.
+
 ## Build from source
 
 Requirements: JDK 17, Android SDK platform 34 and build-tools 34.0.0, plus Python 3 for the lint-result check. Set `JAVA_HOME` and `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) for your machine. Gradle uses the included wrapper.
