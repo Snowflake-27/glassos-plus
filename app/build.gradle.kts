@@ -13,6 +13,10 @@ val localProps = Properties().apply {
 }
 val tmdbKey: String = (localProps.getProperty("tmdb.apiKey") ?: System.getenv("TMDB_API_KEY") ?: "").trim()
 
+val releaseVersion = Properties().apply {
+    rootProject.file("version.properties").inputStream().use { load(it) }
+}
+
 android {
     namespace = "io.github.abhishekkaisar.glassos.personal"
     compileSdk = 34
@@ -22,8 +26,8 @@ android {
         applicationId = "io.github.abhishekkaisar.glassos.personal"
         minSdk = 22
         targetSdk = 28
-        versionCode = 3
-        versionName = "1.0.2-beta-personal"
+        versionCode = (project.findProperty("releaseVersionCode")?.toString() ?: releaseVersion.getProperty("versionCode")).toInt()
+        versionName = project.findProperty("releaseVersionName")?.toString() ?: releaseVersion.getProperty("versionName")
         buildConfigField("String", "TMDB_API_KEY", "\"${tmdbKey.replace("\"", "")}\"")
     }
 

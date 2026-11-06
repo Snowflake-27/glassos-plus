@@ -42,7 +42,7 @@ class Loaded(val slide: Slide, val sharp: Bitmap, val blurred: Bitmap, val logo:
 }
 
 /**
- * Sources for the rotating Top Shelf: trending titles from TMDB (default), the Apple TV app's featured titles
+ * Sources for the rotating Top Shelf: Cinemeta titles (default), optional TMDB or the Apple TV app's featured titles
  * (unofficial, off by default) or the built-in scenes. Titles are cached on disk and refreshed at most every
  * 6 hours. The user's own photos (copied to private storage) are one of the fallback choices.
  */

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="fast_home_label">GlassOS Personal — Fast Home</string>
-    <string name="fast_home_description">Returns to GlassOS Personal when the stock Home screen opens. Does not read screen contents or intercept remote keys. Turn off Replace home in GlassOS settings to pause it.</string>
+    <string name="fast_home_label">GlassOS+ — Fast Home</string>
+    <string name="fast_home_description">Returns to GlassOS+ when the stock Home screen opens. Does not read screen contents. Optional Direct Home mode handles the Home key; all other keys pass through. Home long-press actions are replaced in that mode. Turn off Replace home in GlassOS settings to pause it.</string>
 </resources>

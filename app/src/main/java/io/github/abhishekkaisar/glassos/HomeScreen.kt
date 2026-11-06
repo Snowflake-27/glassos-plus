@@ -57,6 +57,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     private var openingTitle = false
     lateinit var root: FrameLayout
         private set
+    private lateinit var heroRefresh: HeroRefreshButton
     lateinit var hero: HeroView
         private set
     private lateinit var home: FrameLayout
@@ -193,8 +194,10 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             shelfTop = (row0Top - shelfPadV).toFloat()
             leftX = margin.toFloat()
             topY = sh * 30f / 1080f
+            restoredKey = prefs.heroSelectedKey
+            onSelected = { prefs.heroSelectedKey = it }
             onOpen = { openSlide(it) }
-            openLabel = { "Open in " + if (prefs.titleDestination == TitleLinks.STREMIO) "Stremio" else "Nuvio" }
+            openLabel = { "Open in " + TitleLinks.label(prefs.titleDestination) }
             onFocusDown = { focusDock() }
         }
         root.addView(hero, FrameLayout.LayoutParams(-1, -1))
@@ -218,6 +221,27 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         header.addView(gear, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
             rightMargin = margin; topMargin = sh * 48 / 1080
         })
+        heroRefresh = HeroRefreshButton(ctx).apply {
+            id = View.generateViewId()
+            alpha = 0f
+            setOnClickListener { hero.shuffle() }
+            navigate = { code ->
+                when (code) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> { hero.requestFocus(); true }
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> { hero.step(1); true }
+                    KeyEvent.KEYCODE_DPAD_DOWN -> { focusDock(); true }
+                    KeyEvent.KEYCODE_DPAD_UP -> { gear.requestFocus(); true }
+                    else -> false
+                }
+            }
+        }
+        header.addView(heroRefresh, FrameLayout.LayoutParams(ctx.dp(26f).toInt(), ctx.dp(26f).toInt()))
+        hero.onFocusRefresh = { if (heroRefresh.alpha > .9f) heroRefresh.requestFocus() else hero.step(1) }
+        hero.onActionBounds = { x, y, _, opacity ->
+            heroRefresh.translationX = x
+            heroRefresh.translationY = y
+            heroRefresh.alpha = opacity
+        }
         hero.nextFocusUpId = gear.id
         updateTime()
         if (HomeShare.avatar == null) loadAvatar()
@@ -301,13 +325,15 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
 
         root.viewTreeObserver.addOnGlobalFocusChangeListener { old, new ->
             if (old != null && new != null && old !== new && prefs.sound && !FocusAnim.forceInstant) sound?.tick()
-            if (new === hero || old === hero) updateHeroRunning()
+            hero.refreshSelected = new === heroRefresh
+            heroRefresh.isFocusable = new === hero || new === heroRefresh
+            if (new === hero || old === hero || new === heroRefresh || old === heroRefresh) updateHeroRunning()
             if (::chevron.isInitialized) chevron.animate().alpha(if (new is TileView && (new.tag as? Int) == 0) 1f else 0f).setDuration(200).start()
             if (new is TileView) {
                 val r = (new.tag as? Int) ?: 0
                 if (r == 0) lastDockIndex = dockTiles.indexOf(new).coerceAtLeast(0)
                 scrollToRow(r)
-            } else if (new === gear || new === hero || continueRow.hasFocus()) scrollToRow(0)
+            } else if (new === gear || new === hero || new === heroRefresh || continueRow.hasFocus()) scrollToRow(0)
         }
         root.viewTreeObserver.addOnGlobalLayoutListener { invalidateDeep(root) }
         root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
@@ -326,7 +352,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     }
 
     private fun scrollToRow(r: Int) {
-        val expanded = r == 0 && (focused() === hero || focused() === gear)
+        val expanded = r == 0 && (focused() === hero || focused() === gear || focused() === heroRefresh)
         if (r == currentRow && expanded == heroExpanded) return
         currentRow = r
         heroExpanded = expanded
@@ -387,19 +413,24 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
     /** The hero rotates only while the home row is on screen, nothing covers it and it is not focused. */
     fun updateHeroRunning() {
         if (!::hero.isInitialized || released) return
-        hero.setRunning(resumed && currentRow == 0 && !settings.isOpen && !cc.isOpen && !setup.isOpen && !hero.isFocused && !editMode &&
+        hero.setRunning(resumed && currentRow == 0 && !settings.isOpen && !cc.isOpen && !setup.isOpen && !hero.isFocused && !heroRefresh.isFocused && !editMode &&
             movingPkg == null && !appMenu.isOpen)
     }
 
     /**
-     * OK on a title: opens the title in its app when a deep link is known (the Apple TV source gives one), else
-     * opens the streaming service's app. TMDB gives no app-specific title ids, so TMDB titles open the app.
+     * OK opens an exact IMDb title in the preferred installed player. TMDB identifiers are resolved
+     * through external_ids first. Missing/unsupported routes show a message, never a generic app home.
      */
     private fun openSlide(s: Slide) {
         if (s.kind != Slide.TITLE || openingTitle) return
         val destination = prefs.titleDestination
+        try { ctx.packageManager.getApplicationInfo(destination, 0) }
+        catch (_: PackageManager.NameNotFoundException) {
+            Toast.makeText(ctx, "${TitleLinks.label(destination)} is not installed. Choose a player in GlassOS+ Settings.", Toast.LENGTH_LONG).show()
+            return
+        }
         openingTitle = true
-        Toast.makeText(ctx, if (destination == TitleLinks.STREMIO) "Opening in Stremio…" else "Opening in Nuvio…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(ctx, "Opening in ${TitleLinks.label(destination)}…", Toast.LENGTH_SHORT).show()
         worker.execute {
             val url = try { TitleLinks.fromKey(destination, s.key) ?: Tmdb.titleLink(ctx, s.key, destination) } catch (_: Exception) { null }
             ui {
@@ -468,6 +499,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
 
     fun setReplaceHome(on: Boolean) {
         prefs.replaceHome = on
+        FastHomeService.syncKeyFilter()
         HomeWatcher.sync(ctx)
         if (on && !HomeWatcher.hasAccess(ctx)) {
             Toast.makeText(ctx, "Needs usage access: adb shell appops set ${ctx.packageName} GET_USAGE_STATS allow", Toast.LENGTH_LONG).show()
@@ -738,6 +770,11 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
         if (dockTiles.isNotEmpty()) focusedOnce = true
     }
 
+    fun setDirectHomeKey(on: Boolean) {
+        prefs.directHomeKey = on
+        FastHomeService.syncKeyFilter()
+    }
+
     fun setContinueAutoScroll(on: Boolean) {
         prefs.continueAutoScroll = on
         continueRow.setAutoScrollEnabled(on)
@@ -759,7 +796,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
             return
         }
         android.app.AlertDialog.Builder(activity).setTitle("Continue Watching")
-            .setMessage("Allow GlassOS Personal to read watch history that apps share with Android TV? Titles, artwork and playback progress are combined locally. No private app data is accessed.")
+            .setMessage("Allow GlassOS+ to read watch history that apps share with Android TV? Titles, artwork and playback progress are combined locally. No private app data is accessed.")
             .setNegativeButton("Not now", null)
             .setPositiveButton("Continue") { _, _ ->
                 choice.edit().putBoolean("requested", true).apply()
@@ -1004,6 +1041,7 @@ class HomeScreen(val ctx: Context, private val host: HomeHost, seed: HomeScreen?
 
     private fun blockHome(block: Boolean) {
         home.descendantFocusability = if (block) ViewGroup.FOCUS_BLOCK_DESCENDANTS else ViewGroup.FOCUS_AFTER_DESCENDANTS
+        heroRefresh.isFocusable = !block && (hero.isFocused || heroRefresh.isFocused)
         hero.isFocusable = !block
     }
 

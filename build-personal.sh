@@ -12,8 +12,10 @@ mkdir -p tests/classes
 "$JAVA_HOME/bin/javac" -encoding UTF-8 -d tests/classes \
   app/src/main/java/io/github/abhishekkaisar/glassos/LayoutMath.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/TitleLinks.java \
+  app/src/main/java/io/github/abhishekkaisar/glassos/HeroShuffleBag.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/HomeRedirectPolicy.java \
-  app/src/main/java/io/github/abhishekkaisar/glassos/ContinueLogic.java tests/PersonalizationCheck.java
+  app/src/main/java/io/github/abhishekkaisar/glassos/ContinueLogic.java \
+  app/src/main/java/io/github/abhishekkaisar/glassos/DirectHomeKeyPolicy.java tests/PersonalizationCheck.java
 "$JAVA_HOME/bin/java" -cp tests/classes PersonalizationCheck
 ./gradlew --no-daemon assembleDebug lint
 python3 - <<'PY'

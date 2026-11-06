@@ -5,6 +5,10 @@ import android.content.Context
 class Prefs(ctx: Context) {
     private val sp = ctx.getSharedPreferences("glass", Context.MODE_PRIVATE)
 
+    var directHomeKey: Boolean
+        get() = sp.getBoolean("directHomeKey", false)
+        set(v) { sp.edit().putBoolean("directHomeKey", v).apply() }
+
     var continueAutoScroll: Boolean
         get() = sp.getBoolean("continueAutoScroll", false)
         set(v) { sp.edit().putBoolean("continueAutoScroll", v).apply() }
@@ -86,6 +90,10 @@ class Prefs(ctx: Context) {
         get() = LayoutMath.clamp(sp.getInt("tileSize", 100), 80, 100)
         set(v) { sp.edit().putInt("tileSize", LayoutMath.clamp(v, 80, 100)).apply() }
     val layoutKey: String get() = "$columns:$sideMargin:$tileGap:$tileSize"
+    var heroSelectedKey: String
+        get() = sp.getString("heroSelectedKey", "") ?: ""
+        set(v) { sp.edit().putString("heroSelectedKey", v).apply() }
+
     var titleDestination: String
         get() = sp.getString("titleDestination", TitleLinks.NUVIO) ?: TitleLinks.NUVIO
         set(v) { sp.edit().putString("titleDestination", v).apply() }

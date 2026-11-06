@@ -4,5 +4,5 @@
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="0"
     android:canRetrieveWindowContent="false"
-    android:canRequestFilterKeyEvents="false"
+    android:canRequestFilterKeyEvents="true"
     android:description="@string/fast_home_description" />

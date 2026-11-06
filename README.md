@@ -13,8 +13,8 @@ This fork is maintained by [Snowflake-27](https://github.com/Snowflake-27). It i
 - Original Hero presentation: Up from Apps expands the Hero area with only Apps visible; Down restores the compact rows and the previously focused app.
 - Four to six app columns, configurable margins, spacing and icon size; hide/reorder apps without disabling their packages.
 - Cinemeta movie/series backgrounds with larger artwork and selectable catalog content; optional TMDB using your own key.
-- Configurable movie destination: Nuvio or Stremio. Catalog links use IMDb identifiers; Continue Watching uses each publishing app's original link.
-- Optional **Fast Home** accessibility helper observes stock Home window changes without reading window contents or filtering remote keys. The usage-based Home watcher remains a fallback.
+- Configurable movie destination: Nuvio, Stremio or WuPlay. Catalog links use IMDb identifiers; Continue Watching uses each publishing app's original link.
+- Optional **Fast Home** accessibility helper observes stock Home window changes without reading window contents. Optional Direct Home key filtering affects only HOME and requires separate consent. The usage-based Home watcher remains a fallback.
 
 ## Tested and limitations
 
@@ -24,7 +24,7 @@ Some firmware keeps the stock launcher as the system Home even after assigning t
 
 Watch Next/Preview channels require Android 8 or newer and normal `READ_TV_LISTINGS` permission. Only rows exposed by the provider are available. Missing progress or timestamps are not invented; an unknown duration produces no progress bar. Artwork quality depends on the source app.
 
-The installed application is currently labeled **GlassOS Personal**, with application ID `io.github.abhishekkaisar.glassos.personal`. This preserves compatibility with existing Personal installations. It coexists with the official GlassOS application.
+The installed application is labeled **GlassOS+**, with application ID `io.github.abhishekkaisar.glassos.personal`. This preserves compatibility with existing Personal installations. It coexists with the official GlassOS application.
 
 ## Build from source
 
@@ -61,15 +61,15 @@ After testing, turn off USB/wireless/network debugging and revoke debugging auth
 
 Watch history is read from Android's public TV provider, not from private app files, notifications or screen scraping. Metadata and artwork are cached locally. No new analytics or watch-history upload was added by this fork. Network artwork/catalog requests go to their respective providers. The upstream optional Apple/TMDB integrations remain available; see the upstream documentation for its broader permission and setup features.
 
-Fast Home receives only window-change events, cannot retrieve window content and does not request key filtering. Usage access and overlay permission support the fallback Home watcher. Continue Watching adds only the normal `android.permission.READ_TV_LISTINGS`; it does not request privileged EPG access.
+Fast Home receives window-change events and cannot retrieve window content. The separate, opt-in Direct Home key feature requests key filtering; it consumes only HOME and can affect long-press Home behavior. Physical-remote filtering depends on firmware and is not guaranteed. Usage access and overlay permission support the fallback Home watcher. Continue Watching adds only the normal `android.permission.READ_TV_LISTINGS`; it does not request privileged EPG access.
 
 Do not publish your TV backups, viewing history, account screenshots, device identifiers, ADB keys or signing keys.
 
 ## Updating and recovery
 
-Android updates require the same application ID **and signing key**. Local debug builds use the developer's debug key; a build from another machine or CI normally has a different key and cannot update an existing installation. Never share your private key. A future public release should use a dedicated, securely backed-up release key and publish matching source from its release tag.
+Android updates require the same application ID and a trusted signing key. Public releases use one dedicated release key, kept out of source control. Existing debug installations need a compatible migration; never uninstall or clear data merely to resolve a signature mismatch. See [release and recovery instructions](docs/RELEASES.md).
 
-Keep your known-good, same-key APK before updating. To roll back to that build while preserving data, use `adb install -r <previous-same-key.apk>` if its version code permits it. Turn off Replace home / Fast Home in Settings if returning to the stock launcher. Do not uninstall or clear app data as a routine rollback step.
+Keep a known-good, same-key build. A recovery build must have an equal/higher version code. Turn off Replace home / Fast Home and choose the stock Home in Android Settings if returning to it. Do not disable system packages.
 
 ## Credits
 
@@ -79,3 +79,7 @@ Keep your known-good, same-key APK before updating. To roll back to that build w
 - Android TV provider APIs and the metadata/artwork providers used by the original project and this fork.
 
 Original copyright and license notices are retained. Fork changes include the Continue Watching reader/carousel, compact Hero layout integration, layout controls, Cinemeta/Nuvio routing and Fast Home helper. See [CHANGELOG.md](CHANGELOG.md).
+
+## Public releases
+
+See [Hero selection and player protocols](docs/HERO.md) for the exact shuffle behavior, and [release/install/recovery instructions](docs/RELEASES.md) for signed APKs and Downloader setup. Download [the latest APK](https://github.com/Snowflake-27/glassos-plus/releases/latest/download/GlassOS-Plus.apk).

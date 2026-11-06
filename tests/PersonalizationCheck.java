@@ -3,6 +3,7 @@ import io.github.abhishekkaisar.glassos.personal.TitleLinks;
 import io.github.abhishekkaisar.glassos.personal.HomeRedirectPolicy;
 import java.util.Collections;
 import java.util.Set;
+import io.github.abhishekkaisar.glassos.personal.DirectHomeKeyPolicy;
 import io.github.abhishekkaisar.glassos.personal.ContinueLogic;
 
 /** Runs with the existing JDK; no Android device or new test dependency required. */
@@ -11,6 +12,21 @@ public final class PersonalizationCheck {
         if (!value) throw new AssertionError(message);
     }
     public static void main(String[] args) {
+        require("wuplay://movie/tt0371746".equals(TitleLinks.build(TitleLinks.WUPLAY, "movie", "tt0371746")), "WuPlay movie route");
+        require("wuplay://series/tt0944947".equals(TitleLinks.build(TitleLinks.WUPLAY, "series", "tt0944947")), "WuPlay series route");
+        require(TitleLinks.build(TitleLinks.WUPLAY, "movie", "1234") == null, "TMDB guessed as IMDb");
+        io.github.abhishekkaisar.glassos.personal.HeroShuffleBag bag = new io.github.abhishekkaisar.glassos.personal.HeroShuffleBag(new java.util.Random(17));
+        java.util.List<String> keys = java.util.Arrays.asList("a", "b", "c", "d", "a");
+        String current = "a";
+        Set<String> seen = new java.util.HashSet<>();
+        for (int i = 0; i < 3; i++) {
+            String next = bag.draw(keys, current);
+            require(next != null && !next.equals(current), "Shuffle repeated current");
+            require(seen.add(next), "Shuffle repeated within bag");
+            current = next;
+        }
+        require(bag.draw(Collections.singletonList(current), current) == null, "Singleton shuffle repeats");
+        require(bag.draw(Collections.emptyList(), current) == null, "Empty shuffle invents title");
         Set<String> homes = Collections.singleton("stock/stock.HomeActivity");
         require(HomeRedirectPolicy.accepts(true, true, "stock", "stock.HomeActivity", homes), "Home ignored");
         require(!HomeRedirectPolicy.accepts(true, true, "stock", "stock.SettingsActivity", homes), "Settings hijacked");
@@ -33,6 +49,13 @@ public final class PersonalizationCheck {
         require(!ContinueLogic.mayAdvance(false, false, 4, 15000), "Paused home auto-advanced");
         require(LayoutMath.dockTop(1080, 169, 40, 50, 22) == 799, "Original Hero dock moved");
         require(LayoutMath.continueHeight(1920, 283) == 259, "Compact row geometry changed");
+        require(DirectHomeKeyPolicy.accepts(true, 3), "Home filter ignores Home");
+        require(!DirectHomeKeyPolicy.accepts(false, 3), "Disabled filter handles Home");
+        for (int code : new int[]{4, 19, 20, 21, 22, 23, 24, 25, 26, 85, 219, 284}) {
+            require(!DirectHomeKeyPolicy.accepts(true, code), "Non-Home key consumed");
+        }
+        require(DirectHomeKeyPolicy.flags(16, true) == 48, "Existing flags lost");
+        require(DirectHomeKeyPolicy.flags(48, false) == 16, "Filter flag not removed");
         int layouts = 0;
         for (int width : new int[]{960, 1280, 1920, 3840}) {
             for (int columns = 4; columns <= 6; columns++) {

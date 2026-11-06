@@ -1,0 +1,58 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify version and install SDK
+        run: |
+          version="$(sed -n 's/^versionName=//p' version.properties)"
+          test "$GITHUB_REF_NAME" = "v$version"
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+      - name: Run rule checks, build and lint
+        run: |
+          bash build-personal.sh
+          ./gradlew --no-daemon assembleRelease lintRelease
+          python3 scripts/check-release-lint.py
+      - name: Sign and verify the dedicated release certificate
+        env:
+          GLASSOS_KEYSTORE_BASE64: ${{ secrets.GLASSOS_KEYSTORE_BASE64 }}
+          GLASSOS_STORE_PASSWORD: ${{ secrets.GLASSOS_STORE_PASSWORD }}
+          GLASSOS_KEY_PASSWORD: ${{ secrets.GLASSOS_KEY_PASSWORD }}
+          GLASSOS_CERT_SHA256: ${{ secrets.GLASSOS_CERT_SHA256 }}
+        run: |
+          test -n "$GLASSOS_KEYSTORE_BASE64"
+          test -n "$GLASSOS_CERT_SHA256"
+          export GLASSOS_KEYSTORE="$RUNNER_TEMP/glassos-plus.p12"
+          trap 'rm -f "$GLASSOS_KEYSTORE"' EXIT
+          printf '%s' "$GLASSOS_KEYSTORE_BASE64" | base64 --decode > "$GLASSOS_KEYSTORE"
+          chmod 600 "$GLASSOS_KEYSTORE"
+          bash scripts/sign-release.sh > "$RUNNER_TEMP/signature.txt"
+          digest="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/signature.txt")"
+          test "$digest" = "$GLASSOS_CERT_SHA256"
+          cat "$RUNNER_TEMP/signature.txt"
+      - name: Publish APK and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace published assets.'
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/GlassOS-Plus.apk dist/SHA256SUMS --verify-tag --title "GlassOS+ ${GITHUB_REF_NAME#v}" --notes-file RELEASE_NOTES.md
