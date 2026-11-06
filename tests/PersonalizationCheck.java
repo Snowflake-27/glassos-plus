@@ -27,6 +27,13 @@ public final class PersonalizationCheck {
         }
         require(bag.draw(Collections.singletonList(current), current) == null, "Singleton shuffle repeats");
         require(bag.draw(Collections.emptyList(), current) == null, "Empty shuffle invents title");
+        java.util.List<String> catalog = io.github.abhishekkaisar.glassos.personal.HeroCatalogSelection.choose(
+            java.util.Arrays.asList("old", "fresh", "fresh", "other", null, ""), Collections.singleton("old"), 2, new java.util.Random(3));
+        require(catalog.size() == 2 && !catalog.contains("old"), "Catalog reused previous batch before fresh titles");
+        catalog = io.github.abhishekkaisar.glassos.personal.HeroCatalogSelection.choose(
+            java.util.Arrays.asList("old", "fresh", "fresh"), Collections.singleton("old"), 120, new java.util.Random(3));
+        require(catalog.size() == 2 && catalog.get(0).equals("fresh"), "Sparse catalog loses fallback or duplicates titles");
+        require(io.github.abhishekkaisar.glassos.personal.HeroCatalogSelection.choose(Collections.emptyList(), Collections.emptySet(), 120, new java.util.Random(3)).isEmpty(), "Empty catalog fabricated entries");
         Set<String> homes = Collections.singleton("stock/stock.HomeActivity");
         require(HomeRedirectPolicy.accepts(true, true, "stock", "stock.HomeActivity", homes), "Home ignored");
         require(!HomeRedirectPolicy.accepts(true, true, "stock", "stock.SettingsActivity", homes), "Settings hijacked");

@@ -16,3 +16,7 @@ Checked 2026-11-05 on Xiaomi TV Box S (3rd generation), model MiTV-AFMU0, Androi
 - Fire TV and other manufacturers remain untested for these fork-specific changes.
 
 Private recovery APK, signing backup, before/after package lists, screenshots and app data archive are retained locally outside the public repository. See RELEASES.md for recovery and safe debugging closure.
+
+## Catalog expansion 1.1.1
+
+Public endpoint probes returned 211 unique movie and 203 unique series candidates across Popular and Featured pages on the test date (counts vary over time). JVM checks verified fresh-title priority, deduplication, sparse fallback and empty input. The optimized release and release lint passed with the same inherited target-SDK issue and no new errors. VersionCode 11 was signed with the existing dedicated release key and installed as an update without clearing data. The TV logged 120 successfully cached Cinemeta titles.

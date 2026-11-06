@@ -12,9 +12,9 @@ Each `Slide` includes its key/identifier, artwork, title, subtitle, logo and lin
 
 `HeroView.doFrame` automatically advances sequentially through the selected list, holding for 8 seconds and crossfading for 1.1 seconds. It repeats after a complete cycle. Rotation pauses when focused, away from Home, behind overlays or in the background. Cache freshness is checked when Home resumes or the source is selected: metadata expires after six hours, failed requests retry after 30 minutes. There is no separate periodic six-hour background fetch while idle.
 
-Catalog metadata survives restart; the visible selection previously did not. Up to 24 Cinemeta (eight TMDB/Apple) title records are retained for the chosen source. `HeroView.trim` bounds its decoded-image cache to three entries; active crossfade, warming and worker references may transiently retain additional images. These are different limits.
+Catalog metadata survives restart; the visible selection previously did not. Before the catalog expansion, up to 24 Cinemeta (eight TMDB/Apple) title records were retained for the chosen source. `HeroView.trim` bounds its decoded-image cache to three entries; active crossfade, warming and worker references may transiently retain additional images. These are different limits.
 
-## This release
+## Hero refresh button
 
 The icon-only native `HeroRefreshButton` sits immediately beside the Open capsule. Right from Open focuses it, Left returns to Open, Down returns to Apps and Up reaches the profile pill. OK calls `HeroView.shuffle`, which reuses the existing asynchronous image loader and 1.1-second crossfade. It does not rebuild Home or fetch a new catalog. The old artwork stays until decoding completes; rapid activations during loading/fading are ignored.
 
@@ -37,3 +37,11 @@ WuPlay routes/package are documented by [TVRelay](https://github.com/hmartinez94
 A direct WuPlay TMDB-ID format or episode route has not been established. TMDB source titles use the existing `Tmdb.titleLink` IMDb external-ID lookup instead. Hero series open the series detail; no episode identifier is fabricated. Continue Watching keeps the publishing app's original resume intent, including its episode extras.
 
 Settings cycles Nuvio → Stremio → WuPlay. `HomeScreen.openSlide` checks installation, resolves a package-scoped ACTION_VIEW intent, and catches launch failures. It never falls back to a player's generic home screen. Missing apps/unsupported links show a message. Package queries declare all three players. An absent WuPlay installation permits negative-case testing only; protocol support must still be tested with the installed WuPlay build.
+
+## Expanded Cinemeta catalog (1.1.1)
+
+The cached selection now holds up to 120 valid titles, 60 movies plus 60 series in mixed mode or up to 120 of one type. Each type reads Popular pages at offsets 0/50/100 and Featured (`imdbRating`) pages at 0/50. These are public catalogs declared in the [Cinemeta manifest](https://v3-cinemeta.strem.io/manifest.json). Endpoints were checked against actual responses; the provider currently uses 50-entry pages.
+
+Selection deduplicates exact type/IMDb IDs, shuffles candidates and prioritizes entries absent from the preceding cached selection. Older entries fill shortages only when needed. It is not a lifetime viewing-history exclusion. Failed pages leave other successful pages usable; a complete refresh failure preserves the existing disk catalog.
+
+The six-hour refresh policy, artwork resolution, 8-second hold and 1.1-second fade remain unchanged. At 120 titles, an uninterrupted cycle is approximately 18 minutes, rather than 3–4. Actual length depends on successful artwork downloads. All selected artwork is cached on disk for offline use, so the first refresh downloads more data; the decoded cache remains limited to three entries. Cache replacement removes obsolete artwork. Settings → Refresh hero catalog can fetch the expanded selection immediately.

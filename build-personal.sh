@@ -13,6 +13,7 @@ mkdir -p tests/classes
   app/src/main/java/io/github/abhishekkaisar/glassos/LayoutMath.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/TitleLinks.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/HeroShuffleBag.java \
+  app/src/main/java/io/github/abhishekkaisar/glassos/HeroCatalogSelection.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/HomeRedirectPolicy.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/ContinueLogic.java \
   app/src/main/java/io/github/abhishekkaisar/glassos/DirectHomeKeyPolicy.java tests/PersonalizationCheck.java

@@ -12,7 +12,7 @@ This fork is maintained by [Snowflake-27](https://github.com/Snowflake-27). It i
 - Persistent **Auto-scroll Continue Watching**, **Off by default**. Manual left/right always works. When enabled, the row advances every five seconds and pauses during focus/interaction, resuming after nine seconds of inactivity.
 - Original Hero presentation: Up from Apps expands the Hero area with only Apps visible; Down restores the compact rows and the previously focused app.
 - Four to six app columns, configurable margins, spacing and icon size; hide/reorder apps without disabling their packages.
-- Cinemeta movie/series backgrounds with larger artwork and selectable catalog content; optional TMDB using your own key.
+- Cinemeta movie/series backgrounds with up to 120 cached titles from Popular/Featured pages, larger artwork and selectable catalog content; optional TMDB using your own key.
 - Configurable movie destination: Nuvio, Stremio or WuPlay. Catalog links use IMDb identifiers; Continue Watching uses each publishing app's original link.
 - Optional **Fast Home** accessibility helper observes stock Home window changes without reading window contents. Optional Direct Home key filtering affects only HOME and requires separate consent. The usage-based Home watcher remains a fallback.
 

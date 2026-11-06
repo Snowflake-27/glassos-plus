@@ -1,5 +1,11 @@
 # Changes from upstream v1.0.2-beta
 
+## 1.1.1
+
+- Expanded the Cinemeta Hero selection from 24 to up to 120 titles, using Popular and Featured pages and deduplicating exact identifiers.
+- Prioritized titles absent from the preceding cached selection; kept offline artwork, high-quality backgrounds, original layout, timing and three-entry decoded cache.
+- Added catalog-selection JVM checks and a one-time cache-format marker so existing installations fetch the expanded selection.
+
 ## 1.1.0
 
 - Added the native, D-pad-focusable Hero refresh icon beside Open. Cached titles shuffle without a consecutive repeat, using the existing loader/crossfade; last committed selection survives restart.

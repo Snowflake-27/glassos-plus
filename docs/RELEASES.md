@@ -31,3 +31,5 @@ Keep a known-good APK and its matching source tag. Android requires an equal/hig
 Disable Replace Home and optional Direct Home key in GlassOS+ Settings, then select the stock Home through normal Android settings to stop using the launcher. Existing CleanYourTV/package changes are independent and must not be toggled by the release procedure.
 
 The maintainer verified the one-time migration on the existing Android 14 test installation, followed by a normal release-signed update. A local known-good recovery APK has versionCode 10 and the same release certificate, so it can replace this first release without clearing data. This private migration is not required for new public installations. See [validation](VALIDATION.md).
+
+For the 1.1.1 update, the locally retained recovery build was rebuilt with versionCode 11 and the same release key. Future recovery builds must keep pace with the installed versionCode.
